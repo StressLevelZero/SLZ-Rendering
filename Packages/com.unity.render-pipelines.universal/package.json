@@ -1,0 +1,33 @@
+{
+  "name": "com.unity.render-pipelines.universal",
+  "description": "SLZ's modified URP",
+  "version": "8510.0.0",
+  "unity": "6000.3",
+  "displayName": "SLZ Universal RP",
+  "hideInEditor": false,
+  "dependencies": {
+    "com.unity.render-pipelines.core": "17.3.0",
+    "com.unity.shadergraph": "17.3.0",
+    "com.unity.render-pipelines.universal-config": "17.0.3"
+  },
+  "keywords": [
+    "graphics",
+    "performance",
+    "rendering",
+    "mobile",
+    "render",
+    "pipeline"
+  ],
+  "samples": [
+    {
+      "displayName": "URP Package Samples",
+      "description": "Collection of scenes showcasing different features of the Universal Render Pipeline.\n \nTo setup the project to use the samples, the URP Package Samples/SharedAssets/Settings/PackageSamplesURPAsset.asset has to be assigned in the Project Settings/Graphics/Set Default Render Pipeline Asset/Default Render pipeline and/or in the Project Settings/Quality/Rendering/Render Pipeline Asset.",
+      "path": "Samples~/URPPackageSamples"
+    },
+    {
+      "displayName": "URP RenderGraph Samples",
+      "description": "Collection of scripts with some examples of RenderGraph and how it is used within the Universal Render Pipeline.",
+      "path": "Samples~/URPRenderGraphSamples"
+    }
+  ]
+}
