@@ -12,7 +12,10 @@ float4 _CameraDepthTexture_TexelSize;
 float SampleSceneDepth(float2 uv, SAMPLER(samplerParam))
 {
     uv = ClampAndScaleUVForBilinear(UnityStereoTransformScreenSpaceTex(uv), _CameraDepthTexture_TexelSize.xy);
+    /* SLZ MODIFIED - Use LOD sample, normal sample does pointless derivative calculations which break branching
     return SAMPLE_TEXTURE2D_X(_CameraDepthTexture, samplerParam, uv).r;
+    */
+    return SAMPLE_TEXTURE2D_X_LOD(_CameraDepthTexture, samplerParam, uv, 0).r;
 }
 
 float SampleSceneDepth(float2 uv)
