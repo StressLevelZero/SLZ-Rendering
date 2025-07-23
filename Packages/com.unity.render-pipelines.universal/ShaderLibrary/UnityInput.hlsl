@@ -17,6 +17,9 @@
 #define USING_STEREO_MATRICES
 #endif
 
+// SLZ MODIFIED - Add DXC multiview support
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/DXCMultiview.hlsl"
+
 #if defined(USING_STEREO_MATRICES)
 // Current pass transforms.
 #define glstate_matrix_projection     unity_StereoMatrixP[unity_StereoEyeIndex] // goes through GL.GetGPUProjectionMatrix()
@@ -197,6 +200,8 @@ float3   unity_StereoWorldSpaceCameraPos[2];
 CBUFFER_END
 #endif
 
+// SLZ MODIFIED - Remove FXC multiview hack when using DXC
+#if !defined(DXC_MULTIVIEW)
 #if defined(UNITY_STEREO_MULTIVIEW_ENABLED) && defined(SHADER_STAGE_VERTEX)
 // OVR_multiview
 // In order to convey this info over the DX compiler, we wrap it into a cbuffer.
@@ -205,8 +210,13 @@ CBUFFER_END
 #define UNITY_VIEWID gl_ViewID
 #endif
 #endif
+#endif // !DXC_MULTIVIEW
 
+// SLZ MODIFIED - Remove FXC multiview hack when using DXC
+/*
 #if defined(UNITY_STEREO_MULTIVIEW_ENABLED) && defined(SHADER_STAGE_VERTEX)
+*/
+#if !defined(DXC_MULTIVIEW) && defined(UNITY_STEREO_MULTIVIEW_ENABLED) && defined(SHADER_STAGE_VERTEX)
 #define unity_StereoEyeIndex UNITY_VIEWID
 UNITY_DECLARE_MULTIVIEW(2);
 #elif defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)

@@ -1598,7 +1598,10 @@ namespace UnityEngine.Rendering.Universal
             // Depth Priming causes rendering errors with WebGL and WebGPU on Apple Arm64 GPUs.
             bool isNotWebGL = !IsWebGL();
             bool depthPrimingRequested = (depthPrimingRecommended && depthPrimingMode == DepthPrimingMode.Auto) || depthPrimingMode == DepthPrimingMode.Forced;
+            /* SLZ MODIFIED - disabling depth priming with MSAA is unnecessary, basically Unity doesn't see a reason to use MSAA and doesn't want to fix bugs with it: https://discussions.unity.com/t/depth-priming-msaa-and-shader-artifacts/1560911/2
             bool isNotMSAA = cameraData.cameraTargetDescriptor.msaaSamples == 1;
+            */
+            bool isNotMSAA = true;
 
             bool isFirstCameraToWriteDepth = cameraData.renderType == CameraRenderType.Base || cameraData.clearDepth;
             // Depth is not rendered in a depth-only camera setup with depth priming (UUM-38158)
