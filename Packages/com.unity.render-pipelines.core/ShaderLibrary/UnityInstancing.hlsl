@@ -150,7 +150,14 @@
 #endif
 
 #elif defined(UNITY_STEREO_MULTIVIEW_ENABLED)
+    // SLZ MODIFIED - Mirror SPSI behavior for multiview with DXC. SV_ViewID is a uint, and BLENDWEIGHT0 isn't a special semantic when outputting from the vertex stage. 
+    // Technically, we should be able to access SV_ViewID from any stage without wasting interpolator space, but unity default shaders aren't set up to do this. SV_ViewID cannot be output by the vertex stage and thus cannot be in the struct
+    // used both as the vertex output and fragment input in all default unity shaders. It would need to be added as a separate input to the fragment stage, but there's no macro we could override to accomplish this.
+    #if defined(DXC_MULTIVIEW)
+        #define DEFAULT_UNITY_VERTEX_OUTPUT_STEREO uint stereoTargetEyeIndexAsBlendIdx0 : EYEIDX;
+    #else // !DXC_MULTIVIEW
     #define DEFAULT_UNITY_VERTEX_OUTPUT_STEREO float stereoTargetEyeIndexAsBlendIdx0 : BLENDWEIGHT0;
+    #endif // !DXC_MULTIVIEW
     #define DEFAULT_UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output) output.stereoTargetEyeIndexAsBlendIdx0 = unity_StereoEyeIndex;
     #define DEFAULT_UNITY_TRANSFER_VERTEX_OUTPUT_STEREO(input, output) output.stereoTargetEyeIndexAsBlendIdx0 = input.stereoTargetEyeIndexAsBlendIdx0;
     #if defined(SHADER_STAGE_VERTEX)
@@ -227,19 +234,39 @@
             #error "UNITY_INSTANCING_PROCEDURAL_FUNC must be defined."
         #else
             void UNITY_INSTANCING_PROCEDURAL_FUNC(); // forward declaration of the procedural function
+            // SLZ MODIFIED - in the FXC multiview path unity_StereoEyeIndex is redefined to a magic uniform that gets replaced by the glsl view index builtin by hlslcc. For DXC, we need to mimic SPSI and transfer the view index from the vertex input during instance ID setup
+            #if defined(DXC_MULTIVIEW)
+                #define DEFAULT_UNITY_SETUP_INSTANCE_ID(input)  { unity_StereoEyeIndex = input.stereoTargetEyeIndexAsBlendIdx0; UnitySetupInstanceID(UNITY_GET_INSTANCE_ID(input)); UNITY_INSTANCING_PROCEDURAL_FUNC();}
+            #else // !DXC_MULTIVIEW
             #define DEFAULT_UNITY_SETUP_INSTANCE_ID(input)      { UnitySetupInstanceID(UNITY_GET_INSTANCE_ID(input)); UNITY_INSTANCING_PROCEDURAL_FUNC();}
+            #endif // !DXC_MULTIVIEW
         #endif
     #elif defined(SHADER_STAGE_RAY_TRACING)
+        //SLZ MODIFIED - See above
+        #if defined(DXC_MULTIVIEW)
+            #define DEFAULT_UNITY_SETUP_INSTANCE_ID                 { unity_StereoEyeIndex = 0; UnitySetupInstanceID(0);}
+        #else // !DXC_MULTIVIEW
         #define DEFAULT_UNITY_SETUP_INSTANCE_ID                 { UnitySetupInstanceID(0);}
+        #endif // !DXC_MULTIVIEW
     #else
+        //SLZ MODIFIED - See above
+        #if defined(DXC_MULTIVIEW)
+            #define DEFAULT_UNITY_SETUP_INSTANCE_ID(input)      { unity_StereoEyeIndex = input.stereoTargetEyeIndexAsBlendIdx0; UnitySetupInstanceID(UNITY_GET_INSTANCE_ID(input));}
+        #else // !DXC_MULTIVIEW
         #define DEFAULT_UNITY_SETUP_INSTANCE_ID(input)          { UnitySetupInstanceID(UNITY_GET_INSTANCE_ID(input));}
+        #endif // !DXC_MULTIVIEW
     #endif
     #define UNITY_TRANSFER_INSTANCE_ID(input, output)   output.instanceID = UNITY_GET_INSTANCE_ID(input)
 #elif defined(SHADER_STAGE_RAY_TRACING)
     #define DEFAULT_UNITY_SETUP_INSTANCE_ID
     #define UNITY_TRANSFER_INSTANCE_ID(input, output)
 #else
+    //SLZ MODIFIED - See above
+    #if defined(DXC_MULTIVIEW)
+        #define DEFAULT_UNITY_SETUP_INSTANCE_ID(input)  { unity_StereoEyeIndex = input.stereoTargetEyeIndexAsBlendIdx0; }
+    #else // !DXC_MULTIVIEW
     #define DEFAULT_UNITY_SETUP_INSTANCE_ID(input)
+    #endif // !DXC_MULTIVIEW
     #define UNITY_TRANSFER_INSTANCE_ID(input, output)
 #endif
 
