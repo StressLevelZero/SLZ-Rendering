@@ -60,6 +60,8 @@ Shader "Universal Render Pipeline/Unlit"
 
             HLSLPROGRAM
             #pragma target 2.0
+            // SLZ MODIFIED - Add PlatformCompiler to use DXC
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
 
             // -------------------------------------
             // Shader Stages
@@ -75,11 +77,15 @@ Shader "Universal Render Pipeline/Unlit"
             // -------------------------------------
             // Unity defined keywords
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
+            /* SLZ MODIFIED - remove decal keywords
             #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
+            */
             #pragma multi_compile_fragment _FOG_ANALYTIC _FOG_VOLUMETRIC
             #pragma shader_feature_local_fragment _TRANSPARENT_RECEIVE_FOG
             #pragma multi_compile _ DEBUG_DISPLAY
+            /* SLZ MODIFIED - remove crossfade keywords
             #pragma multi_compile _ LOD_FADE_CROSSFADE
+            */
             #pragma multi_compile_fragment _ _EXPOSURE
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
@@ -107,6 +113,8 @@ Shader "Universal Render Pipeline/Unlit"
             }
 
             HLSLPROGRAM
+            // SLZ MODIFIED - remove deferred passes by excluding them from all relevant APIs
+            #pragma exclude_renderers vulkan d3d11
             #pragma target 4.5
 
             // Deferred Rendering Path does not support the OpenGL-based graphics API:
@@ -165,6 +173,9 @@ Shader "Universal Render Pipeline/Unlit"
             HLSLPROGRAM
             #pragma target 2.0
 
+            // SLZ MODIFIED - Add PlatformCompiler to use DXC
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
+
             // -------------------------------------
             // Shader Stages
             #pragma vertex DepthOnlyVertex
@@ -176,7 +187,9 @@ Shader "Universal Render Pipeline/Unlit"
 
             // -------------------------------------
             // Unity defined keywords
+            /* SLZ MODIFIED - remove crossfade keywords
             #pragma multi_compile _ LOD_FADE_CROSSFADE
+            */
 
             //--------------------------------------
             // GPU Instancing
@@ -205,6 +218,9 @@ Shader "Universal Render Pipeline/Unlit"
             HLSLPROGRAM
             #pragma target 2.0
 
+            // SLZ MODIFIED - Add PlatformCompiler to use DXC
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
+
             // -------------------------------------
             // Shader Stages
             #pragma vertex DepthNormalsVertex
@@ -217,7 +233,9 @@ Shader "Universal Render Pipeline/Unlit"
             // -------------------------------------
             // Universal Pipeline keywords
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT // forward-only variant
+            /* SLZ MODIFIED - remove crossfade keywords
             #pragma multi_compile _ LOD_FADE_CROSSFADE
+            */
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
 
             //--------------------------------------
@@ -248,6 +266,9 @@ Shader "Universal Render Pipeline/Unlit"
             HLSLPROGRAM
             #pragma target 2.0
 
+            // SLZ MODIFIED - Add PlatformCompiler to use DXC
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
+
             // -------------------------------------
             // Shader Stages
             #pragma vertex UniversalVertexMeta
@@ -271,8 +292,14 @@ Shader "Universal Render Pipeline/Unlit"
             ColorMask RG
 
             HLSLPROGRAM
+
+            // SLZ MODIFIED - Add PlatformCompiler to use DXC
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
+
             #pragma shader_feature_local _ALPHATEST_ON
+            /* SLZ MODIFIED - remove crossfade keywords
             #pragma multi_compile _ LOD_FADE_CROSSFADE
+            */
             #pragma shader_feature_local_vertex _ADD_PRECOMPUTED_VELOCITY
 
             #include "Packages/com.unity.render-pipelines.universal/Shaders/UnlitInput.hlsl"
@@ -296,8 +323,14 @@ Shader "Universal Render Pipeline/Unlit"
             }
 
             HLSLPROGRAM
+
+            // SLZ MODIFIED - Add PlatformCompiler to use DXC
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
+
             #pragma shader_feature_local _ALPHATEST_ON
+            /* SLZ MODIFIED - remove crossfade keywords
             #pragma multi_compile _ LOD_FADE_CROSSFADE
+            */
             #pragma shader_feature_local_vertex _ADD_PRECOMPUTED_VELOCITY
             #pragma multi_compile _ APPLICATION_SPACE_WARP_MOTION_TRANSPARENT
             #define APPLICATION_SPACE_WARP_MOTION 1
