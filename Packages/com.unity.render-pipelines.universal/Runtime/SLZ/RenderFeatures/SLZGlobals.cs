@@ -154,34 +154,31 @@ public class SLZGlobals : ScriptableRendererFeature
         private class PassData
         {
             public uint m_FrameCount;
-            public Texture2DArray m_BlueNoiseR_32x32x16;
-            public Texture2DArray m_BlueNoiseR_64x64x64;
-            public Texture2DArray m_BlueNoiseRGBA_64x64x64;
+            public TextureHandle m_BlueNoiseR_32x32x16;
+            public TextureHandle m_BlueNoiseR_64x64x64;
+            public TextureHandle m_BlueNoiseRGBA_64x64x64;
             public ComputeBuffer blueNoiseConstantBuffer;
             public NativeArray<BlueNoiseConstants> constArray;
+            public float4 blueNoiseDimFrame;
         }
 
-        static FieldInfo fuckyou = typeof(BaseCommandBuffer).GetField("m_WrappedCommandBuffer", BindingFlags.Instance | BindingFlags.NonPublic);
-
+      
         // This static method is passed as the RenderFunc delegate to the RenderGraph render pass.
         // It is used to execute draw commands.
         static void ExecutePass(PassData data, UnsafeGraphContext context)
         {
             Unity.Mathematics.Random rand = new Unity.Mathematics.Random(data.m_FrameCount);
-
-          
-            float blueNoiseFrame = (float)(s_FrameCount % (uint) data.m_BlueNoiseRGBA_64x64x64.depth);
-            
             float2 randomOffset = rand.NextFloat2();
-            data.constArray[0] = new BlueNoiseConstants { 
-                   _BlueNoise_0 = new float4(data.m_BlueNoiseRGBA_64x64x64.width, data.m_BlueNoiseRGBA_64x64x64.height, data.m_BlueNoiseRGBA_64x64x64.depth, blueNoiseFrame),
-                   _BlueNoise_1 = new float4(randomOffset, 0, 0)
+            data.constArray[0] = new BlueNoiseConstants
+            {
+                _BlueNoise_0 = data.blueNoiseDimFrame,
+                _BlueNoise_1 = new float4(randomOffset, 0, 0)
             };
-            CommandBuffer cmdReal = (CommandBuffer)fuckyou.GetValue((BaseCommandBuffer)context.cmd);
+            //CommandBuffer cmdReal = (CommandBuffer)fuckyou.GetValue((BaseCommandBuffer)context.cmd);
             context.cmd.SetBufferData(data.blueNoiseConstantBuffer, data.constArray);
             context.cmd.SetGlobalConstantBuffer(data.blueNoiseConstantBuffer, id_BlueNoiseDimBuffer, 0, data.blueNoiseConstantBuffer.count * data.blueNoiseConstantBuffer.stride);
             
-            cmdReal.SetGlobalTexture("_BlueNoiseRGBA", data.m_BlueNoiseRGBA_64x64x64);
+            context.cmd.SetGlobalTexture("_BlueNoiseRGBA", data.m_BlueNoiseRGBA_64x64x64);
         }
 
         // RecordRenderGraph is where the RenderGraph handle can be accessed, through which render passes can be added to the graph.
@@ -196,13 +193,25 @@ public class SLZGlobals : ScriptableRendererFeature
             using (var builder = renderGraph.AddUnsafePass<PassData>(passName, out var passData))
             {
                 builder.AllowPassCulling(false);
+
+                
+
+
+                float blueNoiseFrame = (float)(s_FrameCount % (uint)settings.m_BlueNoiseRGBA_64x64x64.depth);
+
+
                 //renderGraph.Imp(this.blueNoiseConstants, false);
                 passData.m_FrameCount = SLZGlobals.frameCount;
-                passData.m_BlueNoiseR_32x32x16 = this.settings.m_BlueNoiseR_32x32x16;
-                passData.m_BlueNoiseR_64x64x64 = this.settings.m_BlueNoiseR_64x64x64;
-                passData.m_BlueNoiseRGBA_64x64x64 = this.settings.m_BlueNoiseRGBA_64x64x64;
+                passData.m_BlueNoiseR_32x32x16 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseR_32x32x16));
+                builder.UseTexture(passData.m_BlueNoiseR_32x32x16, AccessFlags.Read);
+                passData.m_BlueNoiseR_64x64x64 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseR_64x64x64));
+                builder.UseTexture(passData.m_BlueNoiseR_64x64x64, AccessFlags.Read);
+                passData.m_BlueNoiseRGBA_64x64x64 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseRGBA_64x64x64));
+                builder.UseTexture(passData.m_BlueNoiseRGBA_64x64x64, AccessFlags.Read);
+
                 passData.blueNoiseConstantBuffer = this.blueNoiseConstants;
                 passData.constArray = this.constArray;
+                passData.blueNoiseDimFrame = new float4(settings.m_BlueNoiseRGBA_64x64x64.width, settings.m_BlueNoiseRGBA_64x64x64.height, settings.m_BlueNoiseRGBA_64x64x64.depth, blueNoiseFrame);
                 // Use this scope to set the required inputs and outputs of the pass and to
                 // setup the passData with the required properties needed at pass execution time.
 
