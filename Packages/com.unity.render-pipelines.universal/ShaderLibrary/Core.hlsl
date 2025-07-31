@@ -1,6 +1,11 @@
 #ifndef UNIVERSAL_PIPELINE_CORE_INCLUDED
 #define UNIVERSAL_PIPELINE_CORE_INCLUDED
 
+// SLZ MODIFIED
+#include "Packages/com.stresslevelzero.urpconfig/include/DXCUpdateState.hlsl"
+#include "Packages/com.stresslevelzero.urpconfig/include/ProjectSymbols.hlsl"
+// END SLZ MODIFIED
+
 // VT is not supported in URP (for now) this ensures any shaders using the VT
 // node work by falling to regular texture sampling.
 #define FORCE_VIRTUAL_TEXTURING_OFF 1
