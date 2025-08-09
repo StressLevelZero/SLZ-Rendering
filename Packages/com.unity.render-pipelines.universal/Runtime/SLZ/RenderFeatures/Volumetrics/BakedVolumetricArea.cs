@@ -17,7 +17,7 @@ public class BakedVolumetricArea : MonoBehaviour
     [HideInInspector,SerializeField] public Vector3 NormalizedScale;
     [HideInInspector,SerializeField] public Vector3 Corner;
    
-
+    /*
 
     private void OnEnable()
     {
@@ -182,4 +182,5 @@ public class BakedVolumetricArea : MonoBehaviour
         Selection.activeObject = go;
     }
 #endif
+    */
 }
