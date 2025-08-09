@@ -68,7 +68,7 @@ namespace SLZRendering.Runtime
 
         public override void Create()
         {
-            pass = new VolumetricsRenderPass(settings);
+            pass = new VolumetricsRenderPass(settings, defaultVolumetricData);
             pass.renderPassEvent = RenderPassEvent.BeforeRenderingPrePasses;
         }
 
