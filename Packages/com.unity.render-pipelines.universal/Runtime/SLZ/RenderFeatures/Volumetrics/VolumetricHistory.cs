@@ -26,6 +26,7 @@ namespace SLZRendering.Runtime
             base.OnCreate(owner, typeId);
             m_NearID = MakeId(0);
             m_FarID = MakeId(1);
+            m_clipPos = new Vector3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity);
         }
 
         /// <summary>
@@ -48,7 +49,7 @@ namespace SLZRendering.Runtime
         {
             Vector3 cam2clip = cameraPos - m_clipPos;
             float sqDist = Vector3.Dot(cam2clip, cam2clip);
-            return sqDist < (maxDist * maxDist);
+            return sqDist > (maxDist * maxDist);
         }
 
         public void SetClipmapPosition(Vector3 cameraPos)
@@ -94,11 +95,15 @@ namespace SLZRendering.Runtime
             {
 
                 if (IsDirty(ref nearClipDesc, ref farClipDesc))
+                {
+                    //Debug.Log("Clipmap RT descs dirty");
                     Reset();
+                }
 
                 if (!IsAllocated())
                 {
                     Alloc(ref nearClipDesc, ref farClipDesc);
+                    //Debug.Log("Clipmap RTs were not allocated");
                     return true;
                 }
 
