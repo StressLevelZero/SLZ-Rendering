@@ -6,6 +6,7 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEditor;
 using Unity.Mathematics;
+using Unity.Mathematics.Geometry;
 using System.Runtime.InteropServices;
 using Unity.Collections;
 using System.Reflection;
@@ -129,6 +130,7 @@ namespace SLZRendering.Runtime
                 public VolumetricsRenderFeatureSettings rfSettings;
                 public bool update;
                 public Vector3 cameraPos;
+                public List<MinMaxAABB> volumeAABBs;
                 public List<TextureHandle> volumes;
                 public ClipmapHistory clipmapHistory;
             }
@@ -140,6 +142,7 @@ namespace SLZRendering.Runtime
             internal VolumetricsRenderPass(VolumetricsRenderFeatureSettings settings, VolumetricData data)
             {
                 rfSettings = settings;
+                volData = data;
             }
 
             static FieldInfo fuckyou = typeof(BaseCommandBuffer).GetField("m_WrappedCommandBuffer", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -149,7 +152,8 @@ namespace SLZRendering.Runtime
                 CommandBuffer realCmd = (CommandBuffer)fuckyou.GetValue(cmd);
                 if (data.update)
                 {
-                    data.clipmapHistory.previousFrameFence = realCmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
+                    
+                    //data.clipmapHistory.previousFrameFence = realCmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
                 }
             }
 
@@ -161,6 +165,12 @@ namespace SLZRendering.Runtime
                 const string passName = "SLZ Volumetrics";
                 UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
                 UniversalCameraHistory history = cameraData.historyManager;
+
+                if (history == null)
+                {
+                    //Debug.LogError($"Camera {cameraData.camera.name} has no history?");
+                    return;
+                }
                 history.RequestAccess<ClipmapHistory>();
                 ClipmapHistory clipInfo = history.GetHistoryForWrite<ClipmapHistory>();
                 RenderTextureDescriptor clipDesc = new RenderTextureDescriptor()
@@ -175,9 +185,10 @@ namespace SLZRendering.Runtime
                     dimension = TextureDimension.Tex3D
                 };
                 clipDesc.enableRandomWrite = true;
-                clipInfo.Update(ref clipDesc, ref clipDesc);
+                bool freshClipmaps = clipInfo.Update(ref clipDesc, ref clipDesc);
                 Vector3 cameraPos = cameraData.camera.transform.position;
-                if (clipInfo.ClipmapNeedsUpdate(cameraData.camera.transform.position, 1.0f))
+                
+                if (freshClipmaps || clipInfo.ClipmapNeedsUpdate(cameraData.camera.transform.position, volData.ClipmapResampleThreshold))
                 {
                     clipInfo.SetClipmapPosition(cameraPos);
                     // This adds a raster render pass to the graph, specifying the name and the data type that will be passed to the ExecutePass function.
@@ -186,32 +197,37 @@ namespace SLZRendering.Runtime
                         builder.AllowPassCulling(false);
                         builder.EnableAsyncCompute(true);
 
-                        // REPLACE 1.0 WITH ACTUAL ClipmapResampleThreshold!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                       
                         clipInfo.GetCurrentTextures(out RTHandle clipNear, out RTHandle clipFar, out Vector3 clipPos);
                         TextureHandle clipNearHandle = renderGraph.ImportTexture(clipNear);
                         TextureHandle clipFarHandle = renderGraph.ImportTexture(clipFar);
                         builder.UseTexture(clipNearHandle, AccessFlags.ReadWrite);
                         builder.UseTexture(clipFarHandle, AccessFlags.ReadWrite);
-                        //renderGraph.Imp(this.blueNoiseConstants, false);
+                        NativeArray<ushort> idxBuffer = new NativeArray<ushort>(VolumetricManager.volumeCount, Allocator.Temp);
+                        int volumeCount = VolumetricManager.GetVolumesBruteForce(cameraPos, volData.ClipmapScale2, ref idxBuffer);
+                        List<TextureHandle> volumes = new List<TextureHandle>(volumeCount);
+                        List<MinMaxAABB> volAABBs = new List<MinMaxAABB>(volumeCount);
+                        ImportResourceParams param = new ImportResourceParams() { clearOnFirstUse = false, clearColor = Color.black, discardOnLastUse = false };
+                        string debugMsg = $"Updating clipmap for camera '{cameraData.camera}', Clipmap intersects {volumeCount} volumes:\n";
+                        for (int vIdx = 0; vIdx < volumeCount; vIdx++)
+                        {
+                            int index = idxBuffer[vIdx];
+                            TextureHandle volTex = renderGraph.ImportTexture(VolumetricManager.volumeTexHandles[index], param);
+                            builder.UseTexture(volTex, AccessFlags.Read);
+                            volumes.Add(volTex);
+                            volAABBs.Add(VolumetricManager.volumeBounds[index]);
+                            debugMsg += $"{VolumetricManager.volumes[index].gameObject.name}\n";
+                        }
+                        Debug.Log(debugMsg);
+                        idxBuffer.Dispose();
+                        passData.rfSettings = rfSettings;
+                        passData.update = true;
+                        passData.cameraPos = cameraPos;
+                        passData.volumeAABBs = volAABBs;
+                        passData.volumes = volumes;
+                        passData.clipmapHistory = clipInfo;
 
-                        // Use this scope to set the required inputs and outputs of the pass and to
-                        // setup the passData with the required properties needed at pass execution time.
-
-                        // Make use of frameData to access resources and camera data through the dedicated containers.
-                        // Eg:
-                        // UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
-                        UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
-
-                            // Setup pass inputs and outputs through the builder interface.
-                            // Eg:
-                            // builder.UseTexture(sourceTexture);
-                            // TextureHandle destination = UniversalRenderer.CreateRenderGraphTexture(renderGraph, cameraData.cameraTargetDescriptor, "Destination Texture", false);
-
-                            // This sets the render target of the pass to the active color texture. Change it to your own render target as needed.
-                            //builder.SetRenderAttachment(resourceData.activeColorTexture, 0);
-
-                            // Assigns the ExecutePass function to the render pass delegate. This will be called by the render graph when executing the pass.
-                            builder.SetRenderFunc((ClipmapPassData data, ComputeGraphContext context) => ExecuteClipmapPass(data, context));
+                        builder.SetRenderFunc((ClipmapPassData data, ComputeGraphContext context) => ExecuteClipmapPass(data, context));
                     }
                 }
 

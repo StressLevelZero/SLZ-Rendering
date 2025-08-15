@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using SLZRendering.Runtime;
+
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,7 +18,16 @@ public class BakedVolumetricArea : MonoBehaviour
     [SerializeField] public Vector3Int NormalizedTexelDensity; //exposed to see target resolution
     [HideInInspector,SerializeField] public Vector3 NormalizedScale;
     [HideInInspector,SerializeField] public Vector3 Corner;
-   
+
+    private void OnEnable()
+    {
+        VolumetricManager.RegisterVolume(this);
+    }
+    private void OnDisable()
+    {
+        VolumetricManager.RemoveVolume(this);
+    }
+
     /*
 
     private void OnEnable()

@@ -834,7 +834,12 @@ namespace UnityEngine.Rendering.Universal
         internal static void RenderSingleCameraInternal(ScriptableRenderContext context, Camera camera, bool isLastBaseCamera = true)
         {
             UniversalAdditionalCameraData additionalCameraData = null;
+            /// SLZ MODIFIED - Always add a UniversalAdditionalCameraData to the scene view
+            /*
             #if URP_SCREEN_SPACE_REFLECTION
+            */
+            #if true
+            /// END SLZ MODIFIED
             camera.gameObject.TryGetComponent(out additionalCameraData);
 
             // We need this to support screen space reflections in the scene view, as it requires color history,
@@ -845,7 +850,6 @@ namespace UnityEngine.Rendering.Universal
             if (IsGameCamera(camera))
                 camera.gameObject.TryGetComponent(out additionalCameraData);
             #endif
-            RenderSingleCameraInternal(context, camera, ref additionalCameraData, isLastBaseCamera);
         }
 
         internal static void RenderSingleCameraInternal(ScriptableRenderContext context, Camera camera, ref UniversalAdditionalCameraData additionalCameraData, bool isLastBaseCamera = true)
