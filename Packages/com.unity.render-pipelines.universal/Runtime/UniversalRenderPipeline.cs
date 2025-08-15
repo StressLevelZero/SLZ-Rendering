@@ -691,6 +691,15 @@ namespace UnityEngine.Rendering.Universal
             UniversalAdditionalCameraData additionalCameraData = null;
             if (IsGameCamera(camera))
                 camera.gameObject.TryGetComponent(out additionalCameraData);
+            /// SLZ MODIFIED - Unity doesn't automatically add the UniversalAdditionalCameraData component to the scene view for whatever reason? This is necessary for camera history buffers. Adding it doesn't seem to cause issues (at least at the moment)
+#if UNITY_EDITOR
+            if (camera.cameraType == CameraType.SceneView && !camera.gameObject.TryGetComponent(out additionalCameraData))
+            {
+                additionalCameraData = camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
+                //Debug.Log($"Scene view camera has Additional Camera Data? {additionalCameraData != null}");
+            }
+#endif
+            /// END SLZ MODIFIED
 
             RenderSingleCameraInternal(context, camera, ref additionalCameraData, isLastBaseCamera);
         }
