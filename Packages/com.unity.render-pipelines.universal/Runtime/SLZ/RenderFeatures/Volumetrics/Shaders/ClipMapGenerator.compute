@@ -2,13 +2,14 @@
 
 ////This generates a combined clipmap so we don't have to sample every volume map every frame////
 //TODO: Add cascades or tapper
+#pragma use_dxc
+#pragma only_renderers vulkan d3d11
 
 #pragma kernel ClipMapGen
 #pragma kernel ClipMapClear
 #pragma kernel ClipMapHeight
 
-Texture3D<float4>	PreResult;
-RWTexture3D<float4> Result;
+RWTexture3D<float4> Clipmap;
 
 SamplerState my_point_clamp_sampler;
 
@@ -18,57 +19,128 @@ float  ClipmapScale;
 float3	VolumeWorldSize; 
 float3	VolumeWorldPosition;
 
-Texture3D<float4> VolumeMap;
-SamplerState trilinear_clamp_sampler;
+Texture3D<float4> _VolumeMap0;
+Texture3D<float4> _VolumeMap1;
+Texture3D<float4> _VolumeMap2;
+Texture3D<float4> _VolumeMap3;
+Texture3D<float4> _VolumeMap4;
+Texture3D<float4> _VolumeMap5;
+Texture3D<float4> _VolumeMap6;
+Texture3D<float4> _VolumeMap7;
+
+SamplerState linear_clamp_sampler;
 float VolumeDensity;
 
 shared float _GlobalExtinction;
 float4 clearColor;
 
+cbuffer clipmapGenConstants
+{
+    // world-space position of the last clipmap's minimum bound, and the resolution of the clipmap (clipmap is assumed to have equal x,y, and z dimensions) 
+    float4 oldClipMin_ClipResolution;
+    // world-space position of the current clipmap's minimum bound, and the worldspace width of the clipmap (clipmap is assumed to be cubic)
+    float4 newClipMin_ClipSize;
+};
+
+#define OLD_CLIP_MIN	oldClipMin_ClipResolution.xyz
+#define CLIP_MIN		newClipMin_ClipSize.xyz
+#define CLIP_RESOLUTION oldClipMin_ClipResolution.w
+#define CLIP_DIMENSIONS newClipMin_ClipSize.w
+
+cbuffer clipmapGenPerVolume
+{
+	int4 volumeCount_clearTexture;
+    float4 volBoundsMin_MipLevel[8];
+    float4 rcpVolBoundsSize[8];
+}
+
+#define VOLUME_COUNT volumeCount_clearTexture.x
+#define CLEAR_TEXTURE volumeCount_clearTexture.y
+
+
 [numthreads(4, 4, 4)]
 void ClipMapClear(uint3 id : SV_DispatchThreadID)
 {
-	Result[id.xyz] = float4(0, 0, 0, 0);
-	//Result[id.xyz] = clearColor;
+	Clipmap[id.xyz] = float4(0, 0, 0, 0);
 }
 
-[numthreads(4,4,4)]
+void SampleVolume(inout float4 result, inout bool hasSampled, float3 wPos, int volumeIdx, Texture3D<float4> volume)
+{
+	float3 volCoords = (wPos - volBoundsMin_MipLevel[volumeIdx].xyz) * rcpVolBoundsSize[volumeIdx].xyz;
+	if (all(volCoords > 0.0) && all(volCoords < 1.0))
+	{
+		float3 volumeSample = volume.SampleLevel(linear_clamp_sampler, volCoords, volBoundsMin_MipLevel[volumeIdx].w);
+		result.rgb = max(volumeSample, result.rgb);
+		hasSampled = true;
+	}
+}
+
+[numthreads(8,8,1)]
 void ClipMapGen (uint3 id : SV_DispatchThreadID)
 {
-	//uint count, stride;
+    //uint count, stride;
+    if (any(id >= ((uint) CLIP_RESOLUTION)) )
+    {
+        return;
+    }
+    
+    float3 clipmapPos = ((float3)id.xyz + 0.5f) / CLIP_RESOLUTION;
+	float3 wPos = CLIP_DIMENSIONS * clipmapPos + (CLIP_MIN).xyz;
+    
+	float3 oldBoundsMax = OLD_CLIP_MIN + float3(CLIP_DIMENSIONS, CLIP_DIMENSIONS, CLIP_DIMENSIONS);
+    
+	if (all(wPos > OLD_CLIP_MIN) && all(wPos < oldBoundsMax))
+    {
+        return;
+    }
+    
 
-	float3 ClipRes = float3(0,0,0);
-	Result.GetDimensions(ClipRes.x, ClipRes.y, ClipRes.z);
-	float4 UVW;
-	UVW.xyz = (id + 0.5) / ClipRes.xyz; //0-1 scaling
-	UVW.w = 1;
+	float4 result = float4(0, 0, 0, 0);
+	bool hasSampled = CLEAR_TEXTURE == 1; // Always write to the output if we're clearing
 
-	float4 WorldCoord = UVW * ClipmapScale + ClipmapWorldPosition.xyzz;
-	float3 MapUVW = (WorldCoord.xyz - VolumeWorldPosition) / VolumeWorldSize;
-
-	//TODO: Make sampling calculations run or not if they are inside or out of the clipped area
-	float ClipUVW  =
-		step(MapUVW.x, 1) * step(0, MapUVW.x) *
-		step(MapUVW.y, 1) * step(0, MapUVW.y) *
-		step(MapUVW.z, 1) * step(0, MapUVW.z);
-
-	//float tempden = distance(WorldCoord.xyz,0) > 3 ? 0:10 ;
-	float3 VolRes = float3(0, 0, 0);
-	VolumeMap.GetDimensions(VolRes.x, VolRes.y, VolRes.z);
-	//float3 VolPixSize = VolumeWorldSize / VolRes;
-	//float3 ClipPixSize = ClipmapScale / ClipRes;
-
-	// Move this math into the C# side, no reason to do this per pixel!
-	float3 VolPixPerClipPix = (ClipmapScale * VolRes) / (VolumeWorldSize * ClipRes); // ClipPixSize / VolPixSize;
-	float maxScale = max(VolPixPerClipPix.x, max(VolPixPerClipPix.y, VolPixPerClipPix.z));
-	float mip = log2(maxScale);
-	
-	//Sample baked volume and clip it off to its area
-	//Doing max of the two results to account for overlaps
-
-	float4 colors = max(PreResult[id.xyz], VolumeMap.SampleLevel(trilinear_clamp_sampler, MapUVW, mip) * ClipUVW);
-	colors.a = 0;
-	Result[id.xyz] = colors;
+	// Cant have an array of textures, so I have to manually unroll the loop
+	{
+		SampleVolume(result, hasSampled, wPos, 0, _VolumeMap0);
+	}
+	if (VOLUME_COUNT > 1)
+	{
+		SampleVolume(result, hasSampled, wPos, 1, _VolumeMap1);
+	}
+	if (VOLUME_COUNT > 2)
+	{
+		SampleVolume(result, hasSampled, wPos, 2, _VolumeMap2);
+	}
+	if (VOLUME_COUNT > 3)
+	{
+		SampleVolume(result, hasSampled, wPos, 3, _VolumeMap3);
+	}
+	if (VOLUME_COUNT > 4)
+	{
+		SampleVolume(result, hasSampled, wPos, 4, _VolumeMap4);
+	}
+	if (VOLUME_COUNT > 5)
+	{
+		SampleVolume(result, hasSampled, wPos, 5, _VolumeMap5);
+	}
+	if (VOLUME_COUNT > 6)
+	{
+		SampleVolume(result, hasSampled, wPos, 6, _VolumeMap6);
+	}
+	if (VOLUME_COUNT > 7)
+	{
+		SampleVolume(result, hasSampled, wPos, 7, _VolumeMap7);
+	}
+    
+    // only bother loading the previous result if we actually sampled at least one of the volumes
+	if (CLEAR_TEXTURE == 0 && hasSampled)
+	{
+		result = max(result, Clipmap[id.xyz]);
+	}
+    
+	if (hasSampled)
+	{
+		Clipmap[id.xyz] = result;
+	}
 }
 
 [numthreads(4, 4, 4)]
@@ -80,20 +152,20 @@ void MediapGen(uint3 id : SV_DispatchThreadID)
 [numthreads(4, 4, 4)]
 void ClipMapHeight(uint3 id : SV_DispatchThreadID)
 {
-	//uint count, stride;
+    //uint count, stride;
 
-	float4 UVW = float4(0,0,0,0);
-	Result.GetDimensions(UVW.x, UVW.y, UVW.z);
+    float4 UVW = float4(0,0,0,0);
+	Clipmap.GetDimensions(UVW.x, UVW.y, UVW.z);
 
-	UVW.xyz = (id + 0.5) / UVW.xyz; //0-1 scaling
-	UVW.w = 1;
+    UVW.xyz = (id + 0.5) / UVW.xyz; //0-1 scaling
+    UVW.w = 1;
 
-	float4 WorldCoord = UVW * ClipmapScale + ClipmapWorldPosition.xyzz;
+    float4 WorldCoord = UVW * ClipmapScale + ClipmapWorldPosition.xyzz;
 
-	//float heightDens = WorldCoord.y > 0 ? 0:1;
+    //float heightDens = WorldCoord.y > 0 ? 0:1;
 
-	float heightDens = _GlobalExtinction;
+    float heightDens = _GlobalExtinction;
 
-	Result[id.xyz] = max(PreResult[id.xyz].rgba,float4(0,0,0,heightDens));
+	Clipmap[id.xyz] = max(Clipmap[id.xyz].rgba, float4(0, 0, 0, heightDens));
 ;
 }

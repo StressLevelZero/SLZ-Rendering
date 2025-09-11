@@ -20,8 +20,8 @@ public class SLZGlobals : ScriptableRendererFeature
     #endregion // Shader Properties
 
     #region Frame Counter
-    public static uint frameCount { get { return s_FrameCount; } }
-    static uint s_FrameCount = 0u;
+    public static ulong frameCount { get { return s_FrameCount; } }
+    static ulong s_FrameCount = 0u;
     internal static void IncrementFrameCounter(ScriptableRenderContext ctx, List<Camera> cameras) { s_FrameCount++; }
 
 #if UNITY_EDITOR
@@ -197,11 +197,11 @@ public class SLZGlobals : ScriptableRendererFeature
                 
 
 
-                float blueNoiseFrame = (float)(s_FrameCount % (uint)settings.m_BlueNoiseRGBA_64x64x64.depth);
+                float blueNoiseFrame = (float)(s_FrameCount % (ulong)settings.m_BlueNoiseRGBA_64x64x64.depth);
 
 
                 //renderGraph.Imp(this.blueNoiseConstants, false);
-                passData.m_FrameCount = SLZGlobals.frameCount;
+                passData.m_FrameCount = (uint)(SLZGlobals.frameCount & 0xFFFFFFFFUL);
                 passData.m_BlueNoiseR_32x32x16 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseR_32x32x16));
                 builder.UseTexture(passData.m_BlueNoiseR_32x32x16, AccessFlags.Read);
                 passData.m_BlueNoiseR_64x64x64 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseR_64x64x64));
