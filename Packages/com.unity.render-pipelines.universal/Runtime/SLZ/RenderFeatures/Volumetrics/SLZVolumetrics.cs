@@ -242,7 +242,7 @@ namespace SLZRendering.Runtime
                 bool freshClipmaps = clipInfo.Update(ref clipDesc, ref clipDesc);
                 Vector3 cameraPos = cameraData.camera.transform.position;
                 
-                if (true || freshClipmaps || clipInfo.ClipmapNeedsUpdate(cameraData.camera.transform.position, volData.ClipmapResampleThreshold))
+                if (freshClipmaps || clipInfo.ClipmapNeedsUpdate(cameraData.camera.transform.position, volData.ClipmapResampleThreshold))
                 {
                     clipInfo.SetClipmapPosition(cameraPos);
                     // This adds a raster render pass to the graph, specifying the name and the data type that will be passed to the ExecutePass function.
