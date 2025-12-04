@@ -17,6 +17,8 @@ namespace SLZRendering.Runtime
 {
     public class SLZVolumetrics : ScriptableRendererFeature
     {
+    protected override IntermediateTextureUsage useIntermediateTextures => IntermediateTextureUsage.NotRequired;
+
         [System.Serializable]
         public class VolumetricData
         {

@@ -23,6 +23,7 @@ public class SLZGlobals : ScriptableRendererFeature
     public static ulong frameCount { get { return s_FrameCount; } }
     static ulong s_FrameCount = 0u;
     internal static void IncrementFrameCounter(ScriptableRenderContext ctx, List<Camera> cameras) { s_FrameCount++; }
+    protected override IntermediateTextureUsage useIntermediateTextures => IntermediateTextureUsage.NotRequired;
 
 #if UNITY_EDITOR
     [InitializeOnLoadMethod]
@@ -194,11 +195,7 @@ public class SLZGlobals : ScriptableRendererFeature
             {
                 builder.AllowPassCulling(false);
 
-                
-
-
                 float blueNoiseFrame = (float)(s_FrameCount % (ulong)settings.m_BlueNoiseRGBA_64x64x64.depth);
-
 
                 //renderGraph.Imp(this.blueNoiseConstants, false);
                 passData.m_FrameCount = (uint)(SLZGlobals.frameCount & 0xFFFFFFFFUL);
