@@ -99,6 +99,54 @@ real3 UnpackNormalHemiOctEncode(real2 f)
     return normalize(n);
 }
 
+/// SLZ MODIFIED - Add 45 rotated hemi-oct. This plays better with partitioned formats (BC7, ASTC).
+
+// For most normal maps, the curvature (ie the normal vector gradient) is more or less aligned with the normal vector in UV space.
+// While full oct coordinates have a similar alignment between the coordinate gradient and normal direction, in hemi-oct space the upper half 
+// of the octahedron is rotated by 45 to fill the -1 to 1 coordinate space. This seems to cause to the compressor to pick sub-optimal partitioning 
+// schemes that are at a 45 degree angle to the curvature, producing sawtooth like artifacts. 
+// To avoid this, our normal map importer applies a counter 45 degree rotation to the normal vector before converting to hemi-oct space,
+// and thus we need to unrotate the vector after unpacking
+
+// Too bad unity's DXC doesn't enable hlsl 2021, would be nice to use templates for this... 
+
+#define DEF_UNPACK_HEMI_45(type) \
+type##3 UnpackNormalHemiOctEncode45NoNormalize(type##2 f) \
+{ \
+    type##2 val = type##2(f.x + f.y, f.x - f.y); \
+    type##3 n = type##3(val, type(2.0) - abs(val.x) - abs(val.y)); \
+    type x2 = type(0.70710678118654752) * (n.x + n.y); \
+    type y2 = type(0.70710678118654752) * (-n.x + n.y); \
+    n.x = x2; \
+    n.y = y2; \
+    return n; \
+} \
+\
+type##3 UnpackNormalHemiOctEncode45(type##2 f)\
+{ \
+    return (type##3) normalize((float3) UnpackNormalHemiOctEncode45NoNormalize(f)); \
+} \
+\
+type##3 UnpackHemiOctNormalsNoScale(type##2 packedNormal) \
+{ \
+	return UnpackNormalHemiOctEncode45(packedNormal); \
+} \
+\
+type##3 UnpackHemiOctNormals(type##2 packedNormal, type scale = 1.0) \
+{ \
+	type##3 normal = UnpackNormalHemiOctEncode45NoNormalize(packedNormal); \
+	normal.xy *= scale; \
+	return (type##3) normalize((float3) normal); \
+} \
+
+
+DEF_UNPACK_HEMI_45(float)
+DEF_UNPACK_HEMI_45(min16float)
+
+#undef DEF_UNPACK_HEMI_45
+
+/// END SLZ MODIFIED - 45 rotated hemi-oct
+
 // Tetrahedral encoding - Looks like Tetra encoding 10:10 + 2 is similar to oct 11:11, as oct is cheaper prefer it
 // To generate the basisNormal below we use these 4 vertex of a regular tetrahedron
 // v0 = float3(1.0, 0.0, -1.0 / sqrt(2.0));
@@ -203,6 +251,10 @@ real3 UnpackNormalMapRGorAG(real4 packedNormal, real scale = 1.0)
     return UnpackNormalAG(packedNormal, scale);
 }
 
+/// SLZ MODIFIED - make default normal unpacking functions use hemi-oct by default
+
+#ifdef USE_STANDARD_NORMALMAPS
+
 #ifndef BUILTIN_TARGET_API
 real3 UnpackNormal(real4 packedNormal)
 {
@@ -227,6 +279,64 @@ real3 UnpackNormalScale(real4 packedNormal, real bumpScale)
     return UnpackNormalMapRGorAG(packedNormal, bumpScale);
 #endif
 }
+
+#else  // !USE_STANDARD_NORMALMAPS
+
+
+float2 PackedToHOct(float4 packedNormal)
+{
+	float2 hOctCoords;
+#if defined(UNITY_ASTC_NORMALMAP_ENCODING)
+    hOctCoords = packedNormal.ag;
+#elif defined(UNITY_NO_DXT5nm)
+    hOctCoords = packedNormal.rg;
+#else
+	hOctCoords = float2(packedNormal.r * packedNormal.a, packedNormal.g);
+#endif
+	hOctCoords = float(2.0) * hOctCoords - float(1.0);
+	return hOctCoords;
+}
+
+min16float2 PackedToHOct(min16float4 packedNormal)
+{
+	min16float2 hOctCoords;
+#if defined(UNITY_ASTC_NORMALMAP_ENCODING)
+    hOctCoords = packedNormal.ag;
+#elif defined(UNITY_NO_DXT5nm)
+    hOctCoords = packedNormal.rg;
+#else
+	hOctCoords = min16float2(packedNormal.r * packedNormal.a, packedNormal.g);
+#endif
+	hOctCoords = min16float(2.0) * hOctCoords - min16float(1.0);
+	return hOctCoords;
+}
+
+float3 UnpackNormal(float4 packedNormal)
+{
+	float2 hOct = PackedToHOct(packedNormal);
+	return UnpackHemiOctNormalsNoScale(hOct);
+}
+
+min16float3 UnpackNormal(min16float4 packedNormal)
+{
+	min16float2 hOct = PackedToHOct(packedNormal);
+	return UnpackHemiOctNormalsNoScale(hOct);
+}
+
+float3 UnpackNormalScale(float4 packedNormal, float bumpScale)
+{
+	float2 hOct = PackedToHOct(packedNormal);
+	return UnpackHemiOctNormalsNoScale(hOct);
+}
+
+min16float3 UnpackNormalScale(min16float4 packedNormal, min16float bumpScale)
+{
+	min16float2 hOct = PackedToHOct(packedNormal);
+	return UnpackHemiOctNormalsNoScale(hOct);
+}
+
+#endif // !USE_STANDARD_NORMALMAPS
+/// END SLZ MODIFIED - make default normal unpacking functions use hemi-oct by default
 
 //-----------------------------------------------------------------------------
 // HDR packing
