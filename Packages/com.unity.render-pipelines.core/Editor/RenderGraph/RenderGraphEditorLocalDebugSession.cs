@@ -9,9 +9,10 @@ namespace UnityEngine.Rendering.RenderGraphModule
         public RenderGraphEditorLocalDebugSession() : base()
         {
             RegisterAllLocallyKnownGraphsAndExecutions();
-
+            /*
             var analyticsPayload = new DebugMessageHandler.AnalyticsPayload();
             RenderGraphViewerSessionCreatedAnalytic.Send(RenderGraphViewerSessionCreatedAnalytic.SessionType.Local, analyticsPayload);
+            */
         }
     }
 }

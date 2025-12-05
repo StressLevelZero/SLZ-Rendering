@@ -1,3 +1,4 @@
+/*
 using JetBrains.Annotations;
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -64,3 +65,4 @@ namespace UnityEditor.Rendering.Analytics
     }
 
 }
+*/

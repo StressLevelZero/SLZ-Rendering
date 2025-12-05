@@ -203,7 +203,9 @@ namespace UnityEditor.Rendering
                 });
 
                 Apply(w, s, value);
+                /*
                 GraphicsToolUsageAnalytic.ActionPerformed<DebugWindow>("Widget Value Changed", s_Analytic.ToNestedColumn());
+                */
             }
         }
     }

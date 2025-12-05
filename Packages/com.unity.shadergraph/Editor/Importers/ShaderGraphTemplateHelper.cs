@@ -36,8 +36,11 @@ namespace UnityEditor.ShaderGraph
 
         public void RaiseImportSampleDependencies(PackageManager.PackageInfo packageInfo, PackageManager.UI.Sample sample) { }
 
-        public void RaiseTemplateUsed(GraphViewTemplateDescriptor usedTemplate) =>
+        public void RaiseTemplateUsed(GraphViewTemplateDescriptor usedTemplate) { }
+            /*
             ShaderGraphAnalytics.SendShaderGraphTemplateEvent(usedTemplate);
+            */
+
 
         public bool TryGetTemplate(string assetPath, out GraphViewTemplateDescriptor graphViewTemplate)
         {

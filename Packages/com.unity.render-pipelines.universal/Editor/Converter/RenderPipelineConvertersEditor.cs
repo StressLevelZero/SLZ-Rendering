@@ -504,8 +504,9 @@ namespace UnityEditor.Rendering.Universal
             }
 
             RefreshUI();
-
+            /*
             GraphicsToolUsageAnalytic.ActionPerformed<RenderPipelineConvertersEditor>(nameof(Convert), contextInfo.ToNestedColumn());
+            */
         }
 
         public void AddItemsToMenu(GenericMenu menu)
