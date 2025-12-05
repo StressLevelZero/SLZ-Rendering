@@ -11,9 +11,10 @@ namespace UnityEngine.Rendering.RenderGraphModule
             connectionName = "Editor";
 
             RegisterAllLocallyKnownGraphsAndExecutions();
-
+            /*
             var analyticsPayload = new DebugMessageHandler.AnalyticsPayload();
             RenderGraphViewerSessionCreatedAnalytic.Send(RenderGraphViewerSessionCreatedAnalytic.SessionType.Local, analyticsPayload);
+            */
         }
     }
 }

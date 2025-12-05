@@ -50,6 +50,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
                         debugDataPayload.debugData);
                 }
             }
+            /*
             else if (messageType == DebugMessageHandler.MessageType.AnalyticsData)
             {
                 if (payload is DebugMessageHandler.AnalyticsPayload { isCompatible: true } analyticsPayload)
@@ -57,6 +58,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
                     RenderGraphViewerSessionCreatedAnalytic.Send(RenderGraphViewerSessionCreatedAnalytic.SessionType.Remote, analyticsPayload);
                 }
             }
+            */
         }
 
         void RegisterAndUpdateDebugData(string graphName, EntityId executionId, string executionName, DebugData debugData)

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Callbacks;
+/*
 using UnityEditor.Rendering.Analytics;
 using UnityEditor.Rendering.Universal.Analytics;
+*/
 using UnityEditor.Rendering.Universal.ShaderGUI;
 using UnityEditor.ShaderGraph;
 using UnityEngine;
@@ -35,7 +37,9 @@ namespace UnityEditor.Rendering.Universal
         static void ReimportAllMaterials()
         {
             AssetReimportUtils.ReimportAll<Material>(out var duration, out var numberOfAssetsReimported);
+            /*
             AssetReimporterAnalytic.Send<Material>(duration, numberOfAssetsReimported);
+            */
             MaterialPostprocessor.s_NeedsSavingAssets = true;
         }
 

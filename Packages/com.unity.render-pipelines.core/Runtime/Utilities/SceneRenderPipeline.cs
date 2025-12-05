@@ -31,9 +31,10 @@ namespace UnityEngine.Rendering
                 renderPipelineAsset = GraphicsSettings.defaultRenderPipeline;
                 firstTimeCreated = false;
             }
-
+/*
             //Send analytics each time to find usage in content dl on the asset store too
             SceneRenderPipelineAnalytic.SendAnalytic(this);
+			*/
         }
 
         void OnEnable()
@@ -41,8 +42,9 @@ namespace UnityEngine.Rendering
             GraphicsSettings.defaultRenderPipeline = renderPipelineAsset;
         }
 
-
+/*
         [AnalyticInfo(eventName: "sceneRenderPipelineAssignment", vendorKey: "unity.srp", maxEventsPerHour: 10, maxNumberOfElements: 1000)]
+		*/
         class SceneRenderPipelineAnalytic : IAnalytic
         {
 
@@ -71,8 +73,10 @@ namespace UnityEngine.Rendering
 
             static public void SendAnalytic(SceneRenderPipeline sender)
             {
+				/*
                 SceneRenderPipelineAnalytic analytic = new SceneRenderPipelineAnalytic(sender.gameObject.scene.GetGUID());
                 EditorAnalytics.SendAnalytic(analytic);
+				*/
             }
 
             Data m_Data;

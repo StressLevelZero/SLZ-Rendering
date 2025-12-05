@@ -1,4 +1,5 @@
-﻿using System;
+﻿/*
+using System;
 using UnityEngine;
 using UnityEngine.Analytics;
 using UnityEngine.Rendering;
@@ -68,3 +69,4 @@ namespace UnityEditor.Rendering.Analytics
         }
     }
 }
+*/
