@@ -1,3 +1,4 @@
+/*
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using System.Diagnostics.CodeAnalysis;
@@ -61,8 +62,9 @@ namespace UnityEditor.Rendering.Analytics
             warning = string.Empty;
 
             datas = new List<IAnalytic>();
-
-            var volumeProfileGUIDs = AssetDatabase.FindAssets($"t:{nameof(VolumeProfile)} glob:\"**/*.asset\"", k_SearchFolders);
+*/
+//            var volumeProfileGUIDs = AssetDatabase.FindAssets($"t:{nameof(VolumeProfile)} glob:\"**/*.asset\"", k_SearchFolders);
+/*
             foreach (var guid in volumeProfileGUIDs)
             {
                 var volumeProfile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(AssetDatabase.GUIDToAssetPath(guid));
@@ -93,3 +95,4 @@ namespace UnityEditor.Rendering.Analytics
     }
 
 }
+*/

@@ -71,10 +71,12 @@ namespace UnityEditor.Rendering.Universal
         SavedBool m_CameraSortingLayerTextureFoldout;
         SavedBool m_PostProcessingFoldout;
 
+        /*
         Analytics.Renderer2DAnalytics m_Analytics = Analytics.Renderer2DAnalytics.instance;
+        */
         Renderer2DData m_Renderer2DData;
         bool m_WasModified;
-
+        /*
         void SendModifiedAnalytics(Analytics.IAnalytics analytics)
         {
             if (m_WasModified)
@@ -83,7 +85,7 @@ namespace UnityEditor.Rendering.Universal
                 analytics.SendData(modifiedData);
             }
         }
-
+        */
         void OnEnable()
         {
             m_WasModified = false;
@@ -137,7 +139,9 @@ namespace UnityEditor.Rendering.Universal
 
         private void OnDestroy()
         {
+            /*
             SendModifiedAnalytics(m_Analytics);
+            */
         }
 
         public override void OnInspectorGUI()

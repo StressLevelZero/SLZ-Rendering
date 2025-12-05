@@ -5,8 +5,9 @@ using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Rendering;
 using System.IO;
+/*
 using UnityEngine.Analytics;
-
+*/
 
 namespace UnityEditor.Rendering.Universal
 {
@@ -113,9 +114,12 @@ namespace UnityEditor.Rendering.Universal
             var parent = menuCommand.context as GameObject;
             Place(go, parent);
 
+/// SLZ MODIFIED - Remove Analytics
+            /*
             Analytics.LightDataAnalytic lightData = new Analytics.LightDataAnalytic(light2D.GetEntityId(), true, light2D.lightType);
             Analytics.Renderer2DAnalytics.instance.SendData(lightData);
-
+            */
+/// END SLZ MODIFIED
             return light2D;
         }
 
@@ -208,8 +212,14 @@ namespace UnityEditor.Rendering.Universal
         {
             Renderer2DMenus.Create2DRendererData((instance) =>
             {
+<<<<<<< HEAD
                 Analytics.RenderAssetAnalytic modifiedData = new Analytics.RenderAssetAnalytic(instance.GetEntityId(), true, 1, 2);
+=======
+                /*
+                Analytics.RenderAssetAnalytic modifiedData = new Analytics.RenderAssetAnalytic(instance.GetInstanceID(), true, 1, 2);
+>>>>>>> 30646f6f80 (Nuked a bunch of analytics)
                 Analytics.Renderer2DAnalytics.instance.SendData(modifiedData);
+                */
             });
         }
     }
