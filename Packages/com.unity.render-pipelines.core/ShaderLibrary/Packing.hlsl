@@ -129,14 +129,14 @@ type##3 UnpackNormalHemiOctEncode45(type##2 f)\
 \
 type##3 UnpackHemiOctNormalsNoScale(type##2 packedNormal) \
 { \
-	return UnpackNormalHemiOctEncode45(packedNormal); \
+    return UnpackNormalHemiOctEncode45(packedNormal); \
 } \
 \
 type##3 UnpackHemiOctNormals(type##2 packedNormal, type scale = 1.0) \
 { \
-	type##3 normal = UnpackNormalHemiOctEncode45NoNormalize(packedNormal); \
-	normal.xy *= scale; \
-	return (type##3) normalize((float3) normal); \
+    type##3 normal = UnpackNormalHemiOctEncode45NoNormalize(packedNormal); \
+    normal.xy *= scale; \
+    return (type##3) normalize((float3) normal); \
 } \
 
 
@@ -285,55 +285,55 @@ real3 UnpackNormalScale(real4 packedNormal, real bumpScale)
 
 float2 PackedToHOct(float4 packedNormal)
 {
-	float2 hOctCoords;
+    float2 hOctCoords;
 #if defined(UNITY_ASTC_NORMALMAP_ENCODING)
     hOctCoords = packedNormal.ag;
 #elif defined(UNITY_NO_DXT5nm)
     hOctCoords = packedNormal.rg;
 #else
-	hOctCoords = float2(packedNormal.r * packedNormal.a, packedNormal.g);
+    hOctCoords = float2(packedNormal.r * packedNormal.a, packedNormal.g);
 #endif
-	hOctCoords = float(2.0) * hOctCoords - float(1.0);
-	return hOctCoords;
+    hOctCoords = float(2.0) * hOctCoords - float(1.0);
+    return hOctCoords;
 }
 
 min16float2 PackedToHOct(min16float4 packedNormal)
 {
-	min16float2 hOctCoords;
+    min16float2 hOctCoords;
 #if defined(UNITY_ASTC_NORMALMAP_ENCODING)
     hOctCoords = packedNormal.ag;
 #elif defined(UNITY_NO_DXT5nm)
     hOctCoords = packedNormal.rg;
 #else
-	hOctCoords = min16float2(packedNormal.r * packedNormal.a, packedNormal.g);
+    hOctCoords = min16float2(packedNormal.r * packedNormal.a, packedNormal.g);
 #endif
-	hOctCoords = min16float(2.0) * hOctCoords - min16float(1.0);
-	return hOctCoords;
+    hOctCoords = min16float(2.0) * hOctCoords - min16float(1.0);
+    return hOctCoords;
 }
 
 #ifndef BUILTIN_TARGET_API
 float3 UnpackNormal(float4 packedNormal)
 {
-	float2 hOct = PackedToHOct(packedNormal);
-	return UnpackHemiOctNormalsNoScale(hOct);
+    float2 hOct = PackedToHOct(packedNormal);
+    return UnpackHemiOctNormalsNoScale(hOct);
 }
 
 min16float3 UnpackNormal(min16float4 packedNormal)
 {
-	min16float2 hOct = PackedToHOct(packedNormal);
-	return UnpackHemiOctNormalsNoScale(hOct);
+    min16float2 hOct = PackedToHOct(packedNormal);
+    return UnpackHemiOctNormalsNoScale(hOct);
 }
 
 float3 UnpackNormalScale(float4 packedNormal, float bumpScale)
 {
-	float2 hOct = PackedToHOct(packedNormal);
-	return UnpackHemiOctNormalsNoScale(hOct);
+    float2 hOct = PackedToHOct(packedNormal);
+    return UnpackHemiOctNormalsNoScale(hOct);
 }
 
 min16float3 UnpackNormalScale(min16float4 packedNormal, min16float bumpScale)
 {
-	min16float2 hOct = PackedToHOct(packedNormal);
-	return UnpackHemiOctNormalsNoScale(hOct);
+    min16float2 hOct = PackedToHOct(packedNormal);
+    return UnpackHemiOctNormalsNoScale(hOct);
 }
 #endif
 #endif // !USE_STANDARD_NORMALMAPS
