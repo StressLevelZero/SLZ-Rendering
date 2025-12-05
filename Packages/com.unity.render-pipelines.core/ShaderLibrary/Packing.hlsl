@@ -311,6 +311,7 @@ min16float2 PackedToHOct(min16float4 packedNormal)
 	return hOctCoords;
 }
 
+#ifndef BUILTIN_TARGET_API
 float3 UnpackNormal(float4 packedNormal)
 {
 	float2 hOct = PackedToHOct(packedNormal);
@@ -334,7 +335,7 @@ min16float3 UnpackNormalScale(min16float4 packedNormal, min16float bumpScale)
 	min16float2 hOct = PackedToHOct(packedNormal);
 	return UnpackHemiOctNormalsNoScale(hOct);
 }
-
+#endif
 #endif // !USE_STANDARD_NORMALMAPS
 /// END SLZ MODIFIED - make default normal unpacking functions use hemi-oct by default
 
