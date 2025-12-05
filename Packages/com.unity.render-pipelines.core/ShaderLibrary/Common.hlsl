@@ -1574,30 +1574,82 @@ bool IsNormalized(half3 inVec)
     return 0.998 < squaredLength && squaredLength < 1.002;
 }
 
+/// SLZ MODIFIED - All utility functions need explicit min16float and full float32 overloads. Otherwise when real is min16float, these functions will reduce precision of float32 inputs to float16!
+
+/*
 // Division which returns 1 for (inf/inf) and (0/0).
 // If any of the input parameters are NaNs, the result is a NaN.
 real SafeDiv(real numer, real denom)
 {
     return (numer != denom) ? numer / denom : 1;
 }
+*/
 
+float SafeDiv(float numer, float denom)
+{
+    return (numer != denom) ? numer / denom : 1;
+}
+
+min16float SafeDiv(min16float numer, min16float denom)
+{
+    return (numer != denom) ? numer / denom : (min16float)1;
+}
+
+/*
 // Perform a square root safe of imaginary number.
 real SafeSqrt(real x)
 {
     return sqrt(max(0, x));
 }
+*/
 
+float SafeSqrt(float x)
+{
+    return sqrt(max(0, x));
+}
+
+min16float SafeSqrt(min16float x)
+{
+    return sqrt(max((min16float)0, x));
+}
+
+/*
 // Assumes that (0 <= x <= Pi).
 real SinFromCos(real cosX)
 {
     return sqrt(saturate(1 - cosX * cosX));
 }
+*/
 
+float SinFromCos(float cosX)
+{
+    return sqrt(saturate(1 - cosX * cosX));
+}
+
+min16float SinFromCos(min16float cosX)
+{
+    return sqrt(saturate((min16float) 1 - cosX * cosX));
+}
+
+/*
 // Dot product in spherical coordinates.
 real SphericalDot(real cosTheta1, real phi1, real cosTheta2, real phi2)
 {
     return SinFromCos(cosTheta1) * SinFromCos(cosTheta2) * cos(phi1 - phi2) + cosTheta1 * cosTheta2;
 }
+*/
+
+float SphericalDot(float cosTheta1, float phi1, float cosTheta2, float phi2)
+{
+    return SinFromCos(cosTheta1) * SinFromCos(cosTheta2) * cos(phi1 - phi2) + cosTheta1 * cosTheta2;
+}
+
+min16float SphericalDot(min16float cosTheta1, min16float phi1, min16float cosTheta2, min16float phi2)
+{
+    return SinFromCos(cosTheta1) * SinFromCos(cosTheta2) * cos(phi1 - phi2) + cosTheta1 * cosTheta2;
+}
+
+/// END SLZ MODIFIED - All utility functions need explicit min16float and full float32 overloads. Otherwise when real is min16float, these functions will reduce precision of float32 inputs to float16!
 
 // Generates a triangle in homogeneous clip space, s.t.
 // v0 = (-1, -1, 1), v1 = (3, -1, 1), v2 = (-1, 3, 1).
