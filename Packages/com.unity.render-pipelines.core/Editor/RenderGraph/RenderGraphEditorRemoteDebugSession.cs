@@ -50,6 +50,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
                         debugDataPayload.debugData);
                 }
             }
+            /*
             else if (messageType == DebugMessageHandler.MessageType.AnalyticsData)
             {
                 if (payload is DebugMessageHandler.AnalyticsPayload { isCompatible: true } analyticsPayload)
@@ -60,6 +61,7 @@ namespace UnityEngine.Rendering.RenderGraphModule
             // Note: MessageType.Pause is not handled here because pause synchronization is unidirectional (editor -> player only).
             // The editor is the authority for pause state and sends it to the player via SendPauseStateToPlayer.
             // The player receives pause messages to stop/start sending debug data updates, but never sends pause state back to the editor.
+            */
         }
 
         void RegisterAndUpdateDebugData(string graphName, EntityId executionId, string executionName, DebugData debugData)

@@ -35,8 +35,11 @@ namespace UnityEditor.ShaderGraph
 
         public GraphViewTemplateWindow.ISaveFileDialogHelper saveFileDialogHelper { get; set; } = new SaveFileDialog();
 
-        public void RaiseTemplateUsed(GraphViewTemplateDescriptor usedTemplate) =>
+        public void RaiseTemplateUsed(GraphViewTemplateDescriptor usedTemplate) { }
+            /*
             ShaderGraphAnalytics.SendShaderGraphTemplateEvent(usedTemplate);
+            */
+
 
         public bool TryGetTemplate(string assetPath, out GraphViewTemplateDescriptor graphViewTemplate) => TryGetTemplateStatic(assetPath, out graphViewTemplate, out _);
         internal static bool TryGetTemplateStatic(string assetPath, out GraphViewTemplateDescriptor graphViewTemplate, out DataBag dataBag)

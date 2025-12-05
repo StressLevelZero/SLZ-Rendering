@@ -1,3 +1,4 @@
+/*
 using System;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -62,3 +63,4 @@ namespace UnityEditor.Rendering.Analytics
         }
     }
 }
+*/
