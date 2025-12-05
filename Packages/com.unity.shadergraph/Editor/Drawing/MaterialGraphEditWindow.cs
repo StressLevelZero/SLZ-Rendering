@@ -625,9 +625,9 @@ namespace UnityEditor.ShaderGraph.Drawing
 
                 if (GraphUtil.CheckForRecursiveDependencyOnPendingSave(path, graphObject.graph.GetNodes<SubGraphNode>(), "Save"))
                     return false;
-
+                /*
                 ShaderGraphAnalytics.SendShaderGraphEvent(selectedGuid, graphObject.graph);
-
+                */
                 var oldShader = AssetDatabase.LoadAssetAtPath<Shader>(path);
                 if (oldShader != null)
                     ShaderUtil.ClearShaderMessages(oldShader);

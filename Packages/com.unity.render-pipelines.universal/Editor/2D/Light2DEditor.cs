@@ -188,11 +188,15 @@ namespace UnityEditor.Rendering.Universal
 
         Light2D lightObject => target as Light2D;
 
+        /*
         Analytics.Renderer2DAnalytics m_Analytics;
+        */
         HashSet<Light2D> m_ModifiedLights;
 
+        
         private void AnalyticsTrackChanges(SerializedObject serializedObject)
         {
+            /*
             if (serializedObject.hasModifiedProperties)
             {
                 foreach (Object targetObj in serializedObject.targetObjects)
@@ -202,11 +206,15 @@ namespace UnityEditor.Rendering.Universal
                         m_ModifiedLights.Add(light2d);
                 }
             }
+            */
         }
+        
 
         void OnEnable()
         {
+            /*
             m_Analytics = Analytics.Renderer2DAnalytics.instance;
+            */
             m_ModifiedLights = new HashSet<Light2D>();
             m_SortingLayerDropDown = new SortingLayerDropDown();
 
@@ -288,15 +296,17 @@ namespace UnityEditor.Rendering.Universal
 
             m_SortingLayerDropDown.OnEnable(serializedObject, "m_ApplyToSortingLayers");
         }
-
+        /*
         internal void SendModifiedAnalytics(Analytics.Renderer2DAnalytics analytics, Light2D light)
         {
             Analytics.LightDataAnalytic lightData = new Analytics.LightDataAnalytic(light.GetEntityId(), false, light.lightType);
             Analytics.Renderer2DAnalytics.instance.SendData(lightData);
         }
+        */
 
         void OnDestroy()
         {
+            /*
             if (m_ModifiedLights != null && m_ModifiedLights.Count > 0)
             {
                 foreach (Light2D light in m_ModifiedLights)
@@ -304,6 +314,7 @@ namespace UnityEditor.Rendering.Universal
                     SendModifiedAnalytics(m_Analytics, light);
                 }
             }
+            */
         }
 
         void DrawBlendingGroup()

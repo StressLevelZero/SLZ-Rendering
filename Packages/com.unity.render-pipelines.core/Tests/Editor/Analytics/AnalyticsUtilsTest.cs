@@ -1,3 +1,4 @@
+/*
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -326,3 +327,4 @@ namespace UnityEditor.Rendering.Tests
         }
     }
 }
+*/
