@@ -195,10 +195,11 @@ public class SLZGlobals : ScriptableRendererFeature
             {
                 builder.AllowPassCulling(false);
 
-                float blueNoiseFrame = (float)(s_FrameCount % (ulong)settings.m_BlueNoiseRGBA_64x64x64.depth);
+                uint frameCount = (uint)Time.frameCount;
+                float blueNoiseFrame = (float)(frameCount % (uint)settings.m_BlueNoiseRGBA_64x64x64.depth);
 
                 //renderGraph.Imp(this.blueNoiseConstants, false);
-                passData.m_FrameCount = (uint)(SLZGlobals.frameCount & 0xFFFFFFFFUL);
+                passData.m_FrameCount = frameCount;
                 passData.m_BlueNoiseR_32x32x16 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseR_32x32x16));
                 builder.UseTexture(passData.m_BlueNoiseR_32x32x16, AccessFlags.Read);
                 passData.m_BlueNoiseR_64x64x64 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseR_64x64x64));
