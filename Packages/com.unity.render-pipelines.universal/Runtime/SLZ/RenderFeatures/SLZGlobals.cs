@@ -168,7 +168,7 @@ public class SLZGlobals : ScriptableRendererFeature
         // It is used to execute draw commands.
         static void ExecutePass(PassData data, UnsafeGraphContext context)
         {
-            Unity.Mathematics.Random rand = new Unity.Mathematics.Random(data.m_FrameCount);
+            Unity.Mathematics.Random rand = new Unity.Mathematics.Random(data.m_FrameCount + 1u);
             float2 randomOffset = rand.NextFloat2();
             data.constArray[0] = new BlueNoiseConstants
             {

@@ -22,11 +22,19 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
 
             public static readonly GUIContent detailAlbedoMapScaleInfo = EditorGUIUtility.TrTextContent("Setting the scaling factor to a value other than 1 results in a less performant shader variant.");
             public static readonly GUIContent detailAlbedoMapFormatError = EditorGUIUtility.TrTextContent("This texture is not in linear space.");
+
+            /// SLZ MODIFIED - Style for HDRP style detail mask
+            public static readonly GUIContent detailMapText = EditorGUIUtility.TrTextContent("Detail Map",
+                "Grayscale overlay blend in the red channel, detail normals in the alpha and green, and smoothness multiplier in blue");
+            /// END SLZ MODIFIED
         }
 
         public struct LitProperties
         {
             public MaterialProperty detailMask;
+            /// SLZ MODIFIED - SLZ URP Uses HDRP format detail maps, which get a different property name
+            public MaterialProperty detailMap;
+            /// END SLZ MODIFIED
             public MaterialProperty detailAlbedoMapScale;
             public MaterialProperty detailAlbedoMap;
             public MaterialProperty detailNormalMapScale;
@@ -35,6 +43,9 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             public LitProperties(MaterialProperty[] properties)
             {
                 detailMask = BaseShaderGUI.FindProperty("_DetailMask", properties, false);
+                /// SLZ MODIFIED - SLZ URP Uses HDRP format detail maps, which get a different property name
+                detailMap = BaseShaderGUI.FindProperty("_DetailMap", properties, false);
+                /// END SLZ MODIFIED
                 detailAlbedoMapScale = BaseShaderGUI.FindProperty("_DetailAlbedoMapScale", properties, false);
                 detailAlbedoMap = BaseShaderGUI.FindProperty("_DetailAlbedoMap", properties, false);
                 detailNormalMapScale = BaseShaderGUI.FindProperty("_DetailNormalMapScale", properties, false);
@@ -44,21 +55,45 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
 
         public static void DoDetailArea(LitProperties properties, MaterialEditor materialEditor)
         {
-            materialEditor.TexturePropertySingleLine(Styles.detailMaskText, properties.detailMask);
-            materialEditor.TexturePropertySingleLine(Styles.detailAlbedoMapText, properties.detailAlbedoMap,
+            /// SLZ MODIFIED - SLZ URP Uses HDRP format detail maps, which get a different property name. Still check for and render old URP style properties though
+            if (properties.detailMask != null)
+            {
+                materialEditor.TexturePropertySingleLine(Styles.detailMaskText, properties.detailMask);
+            }
+            if (properties.detailAlbedoMap != null)
+            {
+                materialEditor.TexturePropertySingleLine(Styles.detailAlbedoMapText, properties.detailAlbedoMap,
                 properties.detailAlbedoMap.textureValue != null ? properties.detailAlbedoMapScale : null);
-            if (properties.detailAlbedoMapScale.floatValue != 1.0f)
-            {
-                EditorGUILayout.HelpBox(Styles.detailAlbedoMapScaleInfo.text, MessageType.Info, true);
+
+                if (properties.detailAlbedoMapScale.floatValue != 1.0f)
+                {
+                    EditorGUILayout.HelpBox(Styles.detailAlbedoMapScaleInfo.text, MessageType.Info, true);
+                }
+                var detailAlbedoTexture = properties.detailAlbedoMap.textureValue as Texture2D;
+                if (detailAlbedoTexture != null && GraphicsFormatUtility.IsSRGBFormat(detailAlbedoTexture.graphicsFormat))
+                {
+                    EditorGUILayout.HelpBox(Styles.detailAlbedoMapFormatError.text, MessageType.Warning, true);
+                }
+                materialEditor.TexturePropertySingleLine(Styles.detailNormalMapText, properties.detailNormalMap,
+                    properties.detailNormalMap.textureValue != null ? properties.detailNormalMapScale : null);
+                materialEditor.TextureScaleOffsetProperty(properties.detailAlbedoMap);
             }
-            var detailAlbedoTexture = properties.detailAlbedoMap.textureValue as Texture2D;
-            if (detailAlbedoTexture != null && GraphicsFormatUtility.IsSRGBFormat(detailAlbedoTexture.graphicsFormat))
+            if (properties.detailMap != null)
             {
-                EditorGUILayout.HelpBox(Styles.detailAlbedoMapFormatError.text, MessageType.Warning, true);
+                materialEditor.TexturePropertySingleLine(Styles.detailMapText, properties.detailMap,
+                properties.detailMap.textureValue != null ? properties.detailAlbedoMapScale : null);
+
+                if (properties.detailAlbedoMapScale.floatValue != 1.0f)
+                {
+                    EditorGUILayout.HelpBox(Styles.detailAlbedoMapScaleInfo.text, MessageType.Info, true);
+                }
+                var detailMapTexture = properties.detailMap.textureValue as Texture2D;
+                if (detailMapTexture != null && GraphicsFormatUtility.IsSRGBFormat(detailMapTexture.graphicsFormat))
+                {
+                    EditorGUILayout.HelpBox(Styles.detailAlbedoMapFormatError.text, MessageType.Warning, true);
+                }
+                materialEditor.TextureScaleOffsetProperty(properties.detailMap);
             }
-            materialEditor.TexturePropertySingleLine(Styles.detailNormalMapText, properties.detailNormalMap,
-                properties.detailNormalMap.textureValue != null ? properties.detailNormalMapScale : null);
-            materialEditor.TextureScaleOffsetProperty(properties.detailAlbedoMap);
         }
 
         public static void SetMaterialKeywords(Material material)
