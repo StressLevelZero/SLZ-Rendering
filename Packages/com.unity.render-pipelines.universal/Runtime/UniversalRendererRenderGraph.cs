@@ -457,6 +457,8 @@ namespace UnityEngine.Rendering.Universal
 
             CreateRenderingLayersTexture(renderGraph, cameraDescriptor);
 
+            CreateShadingRateTexture(renderGraph, cameraData, cameraDescriptor);
+
             if (cameraData.isHDROutputActive && cameraData.rendersOverlayUI)
                 CreateOffscreenUITexture(renderGraph, cameraDescriptor);
         }
@@ -1029,14 +1031,24 @@ namespace UnityEngine.Rendering.Universal
 
             RecordCustomRenderGraphPasses(renderGraph, RenderPassEvent.BeforeRenderingShadows, RenderPassEvent.BeforeRenderingOpaques);
             if (renderStages.drawOpaquePass)
+/// SLZ MODIFIED - added shading rate texture to DrawObjectsPass params
+                /*
                 m_RenderOpaqueForwardPass.Render(renderGraph, frameData, TextureHandle.nullHandle, resourceData.backBufferDepth, TextureHandle.nullHandle, TextureHandle.nullHandle, uint.MaxValue);
+                */
+                m_RenderOpaqueForwardPass.Render(renderGraph, frameData, TextureHandle.nullHandle, resourceData.backBufferDepth, TextureHandle.nullHandle, TextureHandle.nullHandle, TextureHandle.nullHandle, uint.MaxValue);
+/// END SLZ MODIFIED
             RecordCustomRenderGraphPasses(renderGraph, RenderPassEvent.AfterRenderingOpaques, RenderPassEvent.BeforeRenderingTransparents);
             if (renderStages.drawTransparentPass)
             {
 #if ENABLE_ADAPTIVE_PERFORMANCE
                 if (needTransparencyPass)
 #endif
+/// SLZ MODIFIED - added shading rate texture to DrawObjectsPass params
+                /*
                 m_RenderTransparentForwardPass.Render(renderGraph, frameData, TextureHandle.nullHandle, resourceData.backBufferDepth, TextureHandle.nullHandle, TextureHandle.nullHandle, uint.MaxValue);
+                */
+                m_RenderTransparentForwardPass.Render(renderGraph, frameData, TextureHandle.nullHandle, resourceData.backBufferDepth, TextureHandle.nullHandle, TextureHandle.nullHandle, TextureHandle.nullHandle, uint.MaxValue);
+/// END SLZ MODIFIED
             }
             RecordCustomRenderGraphPasses(renderGraph, RenderPassEvent.AfterRenderingTransparents, RenderPassEvent.AfterRendering);
         }
@@ -1267,6 +1279,10 @@ namespace UnityEngine.Rendering.Universal
             UniversalLightData lightData = frameData.Get<UniversalLightData>();
             UniversalPostProcessingData postProcessingData = frameData.Get<UniversalPostProcessingData>();
 
+            /// SLZ MODIFIED - Render shading rate pass
+            m_PopulateShadingRatePass.Render(renderGraph, frameData, resourceData.cameraShadingRateTexture);
+            /// END SLZ MODIFIED
+
             if (renderingData.stencilLodCrossFadeEnabled)
                 m_StencilCrossFadeRenderPass.Render(renderGraph, context, resourceData.activeDepthTexture);
 
@@ -1357,7 +1373,9 @@ namespace UnityEngine.Rendering.Universal
                         }
                     }
                     else
-                        m_DepthPrepass.Render(renderGraph, frameData, in depthTarget, batchLayerMask, setGlobalDepth);
+                        /// SLZ MODIFIED - Added shading rate image
+                        m_DepthPrepass.Render(renderGraph, frameData, in depthTarget, resourceData.cameraShadingRateTexture, batchLayerMask, setGlobalDepth);
+                        /// END SLZ MODIFIED
 
                     if (needsOccluderUpdate)
                     {
@@ -1449,7 +1467,12 @@ namespace UnityEngine.Rendering.Universal
                 TextureHandle mainShadowsTexture = resourceData.mainShadowsTexture;
                 TextureHandle additionalShadowsTexture = resourceData.additionalShadowsTexture;
                 if (renderStages.drawOpaquePass)
+/// SLZ MODIFIED - added shading rate texture parameter to DrawObjectsPass
+/*
                     m_RenderOpaqueForwardOnlyPass.Render(renderGraph, frameData, resourceData.activeColorTexture, resourceData.activeDepthTexture, mainShadowsTexture, additionalShadowsTexture, uint.MaxValue);
+*/
+                    m_RenderOpaqueForwardOnlyPass.Render(renderGraph, frameData, resourceData.activeColorTexture, resourceData.activeDepthTexture, mainShadowsTexture, additionalShadowsTexture, TextureHandle.nullHandle, uint.MaxValue);
+/// END SLZ MODIFIED
             }
             else
             {
@@ -1481,6 +1504,9 @@ namespace UnityEngine.Rendering.Universal
                                 resourceData.activeDepthTexture,
                                 resourceData.mainShadowsTexture,
                                 resourceData.additionalShadowsTexture,
+/// SLZ MODIFIED - added shading rate texture
+                                resourceData.cameraShadingRateTexture,
+/// END SLZ MODIFIED
                                 m_RenderingLayersMaskSize,
                                 batchLayerMask);
                         }
@@ -1493,6 +1519,9 @@ namespace UnityEngine.Rendering.Universal
                                 resourceData.activeDepthTexture,
                                 resourceData.mainShadowsTexture,
                                 resourceData.additionalShadowsTexture,
+/// SLZ MODIFIED - added shading rate texture
+                                resourceData.cameraShadingRateTexture,
+/// END SLZ MODIFIED
                                 batchLayerMask,
                                 true);
                         }
@@ -1570,7 +1599,11 @@ namespace UnityEngine.Rendering.Universal
                         resourceData.activeColorTexture,
                         resourceData.activeDepthTexture,
                         resourceData.mainShadowsTexture,
-                        resourceData.additionalShadowsTexture);
+                        resourceData.additionalShadowsTexture,
+/// SLZ MODIFIED - added shading rate texture
+                        resourceData.cameraShadingRateTexture
+/// END SLZ MODIFIED
+                        );
                 }
             }
 
@@ -2175,6 +2208,52 @@ namespace UnityEngine.Rendering.Universal
             resourceData.overlayUITexture = renderGraph.ImportTexture(s_OffscreenUIColorHandle, importParams);
         }
 
+        /// SLZ MODIFIED - Add shading rate image
+        void CreateShadingRateTexture(RenderGraph renderGraph, UniversalCameraData cameraData, TextureDesc cameraDescriptor)
+        {
+            if (!ShadingRateInfo.supportsPerImageTile)
+            {
+                return;
+            }
+            UniversalCameraHistory history = cameraData.historyManager;
+            if (history == null)
+            {
+                return;
+            }    
+
+            history.RequestAccess<SLZRendering.Runtime.ShadingRateImageHistory>();
+
+            SLZRendering.Runtime.ShadingRateImageHistory srHistory = history.GetHistoryForWrite<SLZRendering.Runtime.ShadingRateImageHistory>();
+            bool needsUpdate = srHistory.Update(ref cameraDescriptor);
+            if (srHistory == null) { Debug.Log("Missing ShadingRateImageHistory"); return; }
+            srHistory.GetCurrentTexture(out RTHandle srRt);
+            UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
+            resourceData.cameraShadingRateTexture = renderGraph.ImportTexture(srRt);
+            /*
+            UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
+            TextureDesc descriptor = new TextureDesc();
+            descriptor.format = ShadingRateInfo.graphicsFormat;
+
+            Vector2Int tileSize = ShadingRateInfo.imageTileSize;
+            descriptor.width = (cameraDescriptor.width + tileSize.x - 1) / tileSize.x;
+            descriptor.height = (cameraDescriptor.height + tileSize.y - 1) / tileSize.y;
+            descriptor.slices = cameraDescriptor.slices;
+            descriptor.dimension = cameraDescriptor.dimension;
+            descriptor.msaaSamples = MSAASamples.None;
+            
+            //Debug.Log($"Tile size: {tileSize.x}x{tileSize.y}, Camera descriptor width: {cameraDescriptor.width}x{cameraDescriptor.height}x{cameraDescriptor.slices}, new: {descriptor.width}x{descriptor.height}x{descriptor.slices}");
+
+            descriptor.useMipMap = false;
+            descriptor.autoGenerateMips = false;
+
+            descriptor.enableRandomWrite = true;
+            descriptor.enableShadingRate = true;
+
+            resourceData.cameraShadingRateTexture = CreateRenderGraphTexture(renderGraph, descriptor, "_CameraShadingRateTexture", true, Color.black, FilterMode.Point, TextureWrapMode.Clamp, true);
+            */
+        }
+        /// END SLZ MODIFIED
+
         void DepthNormalPrepassRender(RenderGraph renderGraph, RenderPassInputSummary renderPassInputs, in TextureHandle depthTarget, uint batchLayerMask, bool setGlobalDepth, bool setGlobalTextures, bool partialPass)
         {
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
@@ -2189,7 +2268,7 @@ namespace UnityEngine.Rendering.Universal
                 m_DepthNormalPrepass.enableRenderingLayers = false;
             }
 
-            m_DepthNormalPrepass.Render(renderGraph, frameData, resourceData.cameraNormalsTexture, in depthTarget, resourceData.renderingLayersTexture, batchLayerMask, setGlobalDepth, setGlobalTextures, partialPass);
+            m_DepthNormalPrepass.Render(renderGraph, frameData, resourceData.cameraNormalsTexture, in depthTarget, resourceData.renderingLayersTexture, resourceData.cameraShadingRateTexture, batchLayerMask, setGlobalDepth, setGlobalTextures, partialPass);
 
             if (m_RenderingLayerProvidesByDepthNormalPass)
                 SetRenderingLayersGlobalTextures(renderGraph);

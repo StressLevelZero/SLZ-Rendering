@@ -182,6 +182,8 @@ namespace UnityEngine.Rendering.Universal
 
         StencilCrossFadeRenderPass m_StencilCrossFadeRenderPass;
 
+        PopulateShadingRatePass m_PopulateShadingRatePass;
+
         RTHandle m_TargetColorHandle;
         RTHandle m_TargetDepthHandle;
 
@@ -367,6 +369,10 @@ namespace UnityEngine.Rendering.Universal
                     postProcessEnabled = false;
                 }
             }
+
+            /// SLZ MODIFIED - Add PopulateShadingRatePass
+            m_PopulateShadingRatePass = new PopulateShadingRatePass(RenderPassEvent.BeforeRenderingPrePasses - 1);
+            /// END SLZ MODIFIED
 
             m_ExposurePass = new ExposurePass();
             m_ShadowPassGroup = new ShadowPassGroup();

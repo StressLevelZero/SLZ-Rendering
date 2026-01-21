@@ -1,0 +1,142 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Populate2D
+
+#pragma use_dxc vulkan
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+#pragma multi_compile _ ARRAY_TARGET
+
+#if defined(ARRAY_TARGET)
+RWTexture2DArray<uint>
+#else
+RWTexture2D<uint>
+#endif
+	Result;
+
+float4 _EyeCenters;
+
+/** @brief 
+ * Our barrel distortion function (r` = r(1+kr^P)) has an inflection point where the distorted radius starts to shrink with increasing radius.
+ * To avoid artifacts, switch to a linear function beyond a cutoff, where the cutoff is the radius at which the barrel distortion's slope
+ * equals the linear function's slope.
+ *
+ * @param barrelCoeff The barrel distortion coefficient
+ * @param power       The power of the second term in the tunable barrel distortion function
+ * @param slope	      Slope of the linear function
+ * @return Radius at which to switch from the barrel distortion function to the linear function
+ */
+float BarrelCutoffDist(float barrelCoeff, float power, float slope)
+{
+	return pow((slope - 1.0) / ((power + 1) * barrelCoeff), 1.0/power);
+}
+
+/** @brief Given the slope and cutoff distance, calculate the vertical offset of the linear function so that it is 
+ *         tangent to the barrel distortion function.
+ *
+ * @param barrelCoeff The barrel distortion coefficient
+ * @param power       The power of the second term in the tunable barrel distortion function
+ * @param cutoffDist  Radius to switch to the linear function after
+ * @param slope       Slope of the linear function
+ */
+float LinearFuncOffset(float barrelCoeff, float power, float cutoffDist, float slope)
+{
+	return (cutoffDist * (1 + barrelCoeff * pow(cutoffDist, power))) - slope * cutoffDist;
+}
+
+
+
+float2 BarrelDistort(float2 scaledCoord, float2 center, float param1, float power, float cutoffDist, float linearSlope, float linearOffset, float scale)
+{
+	float radius = length(scaledCoord);
+	
+	float radiusDistorted = radius <= cutoffDist ? radius * (1 + param1 * pow(radius, power)) : linearSlope * radius + linearOffset;
+	
+	return scale * (radiusDistorted * normalize(scaledCoord));
+}
+
+float2 SphereDistort(float2 uv, float sphereRadius)
+{
+	float centerDist = length(uv);
+	
+	float sphereProj = centerDist * (sphereRadius * rsqrt(sphereRadius * sphereRadius + centerDist * centerDist));
+	
+	return (sphereProj * normalize(uv));
+}
+
+
+int2 GetShadingRate(float2 pixelCoords, float2 floatDim, int eyeIndex)
+{
+	float maxDim = max(floatDim.x, floatDim.y);
+	float minDim = min(floatDim.x, floatDim.y);
+	float2 eyeCenter = eyeIndex == 0 ? _EyeCenters.xy : _EyeCenters.zw;
+	float2 ndc = (2.0 * (pixelCoords - floatDim * eyeCenter)) / minDim;
+	float invDim = 1.0f / minDim;
+	float2 center = _EyeCenters.xy;
+
+	float radius = 0.5;
+	float param = -0.33333333;
+	float power = 2;
+	float slope = 1.0 / 32.0;
+	
+	float cutoff = BarrelCutoffDist(param, power, slope);
+	float zoom = 1.0 / cutoff; //sqrt((maxDim * maxDim) / (minDim * minDim) + 1);
+	float linOffset = LinearFuncOffset(param, power, cutoff, slope);
+	float2 uv00 = ndc / zoom; //(float2(id.xy)) * invDim;
+	if (length(uv00) >= cutoff)
+	{
+		return int2(2, 2);
+	}
+	float2 uv10 = float2(uv00.x + invDim, uv00.y);
+	float2 uv01 = float2(uv00.x, uv00.y + invDim);
+	float2 uv11 = float2(uv00.x + invDim, uv00.y + invDim);
+	uv00 = BarrelDistort(uv00, center, param, power, cutoff, slope, linOffset, zoom);
+	uv10 = BarrelDistort(uv10, center, param, power, cutoff, slope, linOffset, zoom);
+	uv01 = BarrelDistort(uv01, center, param, power, cutoff, slope, linOffset, zoom);
+	uv11 = BarrelDistort(uv11, center, param, power, cutoff, slope, linOffset, zoom);
+	//uv00 = SphereDistort(uv00, radius);
+	//uv10 = SphereDistort(uv10, radius);
+	//uv01 = SphereDistort(uv01, radius);
+	//uv11 = SphereDistort(uv11, radius);
+	float2 x = 0.5 * ((uv00 - uv10) + (uv01 - uv11));
+	float2 y = 0.5 * ((uv00 - uv01) + (uv10 - uv11));
+	float areaFraction = sqrt(length(cross(float3(normalize(x), 0), float3(normalize(y), 0))));
+	float dx = pow(0.9 * areaFraction * minDim * length(x), 2);
+	float dy = pow(0.9 * areaFraction * minDim * length(y), 2);
+	int2 rate = int2(round(log2(1.0 / float2(dx, dy))));
+	rate = clamp(rate, 0, 2);
+	return rate;
+}
+
+[numthreads(8,8,1)]
+void Populate2D(uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+	uint3 dim;
+	
+#if ARRAY_TARGET
+	Result.GetDimensions(dim.x, dim.y, dim.z);
+#else
+	Result.GetDimensions(dim.x, dim.y);
+	dim.z = 1;
+#endif
+	
+	if (any(id >= dim))
+		return;
+	
+	float2 floatDim = float2(dim.xy);
+#if defined(SHADER_API_D3D11)
+	int2 rate0 = GetShadingRate(id.xy, floatDim, 0);
+	int2 rate1 = GetShadingRate(id.xy, floatDim, 1);
+	int2 rate = min(rate0,rate1); 
+#else
+	int2 rate = GetShadingRate(id.xy, floatDim, id.z);
+#endif
+	
+#if ARRAY_TARGET
+	Result[id.xyz] = ((rate.x) << 2) | (rate.y);
+#else
+	Result[id.xy] = ((rate.x) << 2) | (rate.y);
+#endif
+		
+}
