@@ -50,13 +50,6 @@ namespace SLZ.SLZEditorTools
             Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendCollabOperation), fakeResult);
             Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendAssetPostprocessorsUsage), fakeResult);
             Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendAssetDownloadEvent), fakeResult);
-            Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendEventTimelineInfo), fakeResult);
-            Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendEventTimelineInfo), fakeResult);
-            Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendEventTimelineInfo), fakeResult);
-            Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendEventTimelineInfo), fakeResult);
-            Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendEventTimelineInfo), fakeResult);
-            Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendEventTimelineInfo), fakeResult);
-            Detour.TryDetourFromTo(AsMethodInfoAO(EditorAnalytics.SendEventTimelineInfo), fakeResult);
         }
 
         static UnityEngine.Analytics.AnalyticsResult FakeWithResult()

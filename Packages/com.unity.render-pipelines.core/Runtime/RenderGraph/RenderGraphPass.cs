@@ -564,7 +564,12 @@ namespace UnityEngine.Rendering.RenderGraphModule
             {
                 hasShadingRateImage = true;
                 // shading rate image access flag is always read, only 1 mip and 1 slice
+                /// SLZ MODIFIED - D3D12 is limited to 1 slice because of AMD. On vulkan everyone but AMD supports more than 1 slice. 2 Slices are absolutely necessary for stereo-correct shading rate images, you cannot use the same image in both eyes!
+                /*
                 shadingRateAccess = new TextureAccess(shadingRateImage, AccessFlags.Read, 0, 0);
+                */
+                shadingRateAccess = new TextureAccess(shadingRateImage, AccessFlags.Read, 0, -1);
+                /// END SLZ MODIFIED
             }
         }
 

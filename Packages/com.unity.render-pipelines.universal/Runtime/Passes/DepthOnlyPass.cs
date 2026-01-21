@@ -72,8 +72,11 @@ namespace UnityEngine.Rendering.Universal.Internal
             drawSettings.lodCrossFadeStencilMask = 0; // For stencil-based Lod, we use texture dither instead of stencil testing because we have the same shader variants for cross-fade shadow.
             return new RendererListParams(renderingData.cullResults, drawSettings, m_FilteringSettings);
         }
-
+        /// SLZ MODIFIED - Add fragment shading rate image
+        /*
         internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle depthTexture, uint batchLayerMask, bool setGlobalDepth)
+        */
+        internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle depthTexture, TextureHandle shadingRateTexture, uint batchLayerMask, bool setGlobalDepth)
         {
             UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
             UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
@@ -87,6 +90,21 @@ namespace UnityEngine.Rendering.Universal.Internal
                 builder.UseRendererList(passData.rendererList);
 
                 builder.SetRenderAttachmentDepth(depthTexture, AccessFlags.ReadWrite);
+
+                /// SLZ MODIFIED - Use fragment shading rate image when available
+                if (shadingRateTexture.IsValid())
+                {
+                    builder.SetShadingRateImageAttachment(shadingRateTexture);
+                    builder.UseTexture(shadingRateTexture, AccessFlags.Read);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                else
+                {
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Keep);
+                }
+                /// END SLZ MODIFIED
 
                 if (setGlobalDepth)
                     builder.SetGlobalTextureAfterPass(depthTexture, s_CameraDepthTextureID);
