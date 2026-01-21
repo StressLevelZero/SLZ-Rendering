@@ -184,6 +184,8 @@ namespace UnityEngine.Rendering.Universal
 
         StencilCrossFadeRenderPass m_StencilCrossFadeRenderPass;
 
+        PopulateShadingRatePass m_PopulateShadingRatePass;
+
         RTHandle m_TargetColorHandle;
         RTHandle m_TargetDepthHandle;
 
@@ -349,7 +351,7 @@ namespace UnityEngine.Rendering.Universal
             this.m_DepthPrimingRecommended = true;
 #endif
 #endif
-
+            m_PopulateShadingRatePass = new PopulateShadingRatePass(RenderPassEvent.BeforeRenderingPrePasses - 1);
             // Note: Since all custom render passes inject first and we have stable sort,
             // we inject the builtin passes in the before events.
             m_MainLightShadowCasterPass = new MainLightShadowCasterPass(RenderPassEvent.BeforeRenderingShadows);

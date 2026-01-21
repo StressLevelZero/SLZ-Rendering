@@ -348,6 +348,18 @@ namespace UnityEngine.Rendering.Universal
         }
         private TextureHandle _stpDebugView;
 
+        /// SLZ MODIFIED - Added shading rate image
+        /// <summary>
+        /// Shading rate image that should be used by all drawing passes (if it exists).
+        /// </summary>
+        internal TextureHandle cameraShadingRateTexture
+        {
+            get => CheckAndGetTextureHandle(ref _cameraShadingRateTexture);
+            set => CheckAndSetTextureHandle(ref _cameraShadingRateTexture, value);
+        }
+        private TextureHandle _cameraShadingRateTexture;
+        /// END SLZ MODIFIED
+
         /// <inheritdoc />
         public override void Reset()
         {
@@ -372,6 +384,9 @@ namespace UnityEngine.Rendering.Universal
             _ssaoTexture = TextureHandle.nullHandle;
             _irradianceTexture = TextureHandle.nullHandle;
             _stpDebugView = TextureHandle.nullHandle;
+            /// SLZ MODIFIED - Added shading rate image
+            _cameraShadingRateTexture = TextureHandle.nullHandle;
+            /// END SLZ MODIFIED
 
             for (int i = 0; i < _gBuffer.Length; i++)
                 _gBuffer[i] = TextureHandle.nullHandle;
