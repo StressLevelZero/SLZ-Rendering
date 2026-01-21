@@ -127,7 +127,12 @@ namespace UnityEngine.Rendering.Universal.Internal
             return new RendererListParams(renderingData.cullResults, drawSettings, m_FilteringSettings);
         }
 
+        /// SLZ MODIFIED - Added shading rate texture
+        /*
         internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle cameraNormalsTexture, in TextureHandle depthTexture, in TextureHandle renderingLayersTexture, uint batchLayerMask, bool setGlobalDepth, bool setGlobalNormalAndRenderingLayers, bool allowPartialPass)
+        */
+        internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle cameraNormalsTexture, in TextureHandle depthTexture, in TextureHandle renderingLayersTexture, TextureHandle shadingRateTexture, uint batchLayerMask, bool setGlobalDepth, bool setGlobalNormalAndRenderingLayers, bool allowPartialPass)
+        /// END SLZ MODIFIED
         {
             if (allowPartialPass)
             {
@@ -146,6 +151,20 @@ namespace UnityEngine.Rendering.Universal.Internal
             {
                 builder.SetRenderAttachment(cameraNormalsTexture, 0, AccessFlags.Write);
                 builder.SetRenderAttachmentDepth(depthTexture, AccessFlags.ReadWrite);
+
+                /// SLZ MODIFIED - Use fragment shading rate image when available
+                if (shadingRateTexture.IsValid())
+                {
+                    builder.SetShadingRateImageAttachment(shadingRateTexture);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                else
+                {
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Keep);
+                }
+                /// END SLZ MODIFIED
 
                 passData.enableRenderingLayers = enableRenderingLayers;
 #if URP_SCREEN_SPACE_REFLECTION

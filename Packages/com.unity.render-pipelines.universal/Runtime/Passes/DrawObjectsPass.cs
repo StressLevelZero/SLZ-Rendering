@@ -244,7 +244,11 @@ namespace UnityEngine.Rendering.Universal.Internal
             return cameraData.renderer.useDepthPriming && isOpaque && (cameraData.renderType == CameraRenderType.Base || cameraData.clearDepth);
         }
 
+        /// SLZ MODIFIED - Add fragment shading rate image
+        /*
         internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle colorTarget, in TextureHandle depthTarget, in TextureHandle mainShadowsTexture, in TextureHandle additionalShadowsTexture, uint batchLayerMask = uint.MaxValue, bool isMainOpaquePass = false)
+        */
+        internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle colorTarget, in TextureHandle depthTarget, in TextureHandle mainShadowsTexture, in TextureHandle additionalShadowsTexture, in TextureHandle shadingRateTexture, uint batchLayerMask = uint.MaxValue, bool isMainOpaquePass = false)
         {
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
             UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
@@ -256,6 +260,20 @@ namespace UnityEngine.Rendering.Universal.Internal
             using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, profilingSampler))
             {
                 builder.UseAllGlobalTextures(true);
+
+                /// SLZ MODIFIED - Use fragment shading rate image when available
+                if (shadingRateTexture.IsValid())
+                {
+                    builder.SetShadingRateImageAttachment(shadingRateTexture);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                else
+                {
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Keep);
+                }
+                /// END SLZ MODIFIED
 
                 InitPassData(cameraData, ref passData, batchLayerMask, resourceData.isActiveTargetBackBuffer);
 

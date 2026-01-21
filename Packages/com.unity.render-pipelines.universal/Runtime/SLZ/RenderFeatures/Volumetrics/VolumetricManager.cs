@@ -77,8 +77,11 @@ namespace SLZRendering.Runtime
 
         public static void DisposeNativeMemory()
         {
-            nativeMemoryManager.Dispose();
-            nativeMemoryManager = null;
+            if (nativeMemoryManager != null)
+            {
+                nativeMemoryManager.Dispose();
+                nativeMemoryManager = null;
+            }
         }
 #endif
 
