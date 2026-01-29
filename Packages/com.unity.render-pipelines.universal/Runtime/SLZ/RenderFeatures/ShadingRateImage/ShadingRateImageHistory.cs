@@ -12,8 +12,10 @@ namespace SLZRendering.Runtime
     {
         public struct FoveationSettings
         {
-
+            float scale;
+            float power;
         }
+        public FoveationSettings settings;
         private int m_ShadingRateImageID;
         private RenderTextureDescriptor m_ShadingRateImageDescriptor;
         private ulong m_SRIDescHash64;

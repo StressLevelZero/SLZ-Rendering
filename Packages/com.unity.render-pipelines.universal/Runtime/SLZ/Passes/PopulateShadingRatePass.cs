@@ -4,6 +4,8 @@ using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 using Unity.Mathematics;
 using UnityEngine.Experimental.Rendering;
+using static PlasticPipe.PlasticProtocol.Messages.Serialization.ItemHandlerMessagesSerialization;
+using SLZRendering.Runtime;
 
 
 #if UNITY_EDITOR
@@ -49,6 +51,7 @@ namespace UnityEngine.Rendering.Universal.Internal
             public int3 shadingRateTexDimensions;
             public TextureHandle shadingRateTex;
             public Vector4 eyeCenterCoords;
+            public ShadingRateImageHistory.FoveationSettings fovSettings;
         }
 
         private static void ExecutePass(ComputeCommandBuffer cmd, PassData passData)
@@ -83,7 +86,12 @@ namespace UnityEngine.Rendering.Universal.Internal
             }
             UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
             UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
+            if (!cameraData.xr.enabled)
+            {
+                return;
+            }
             UniversalLightData lightData = frameData.Get<UniversalLightData>();
+            ShadingRateImageHistory srHistory = cameraData.historyManager.GetHistoryForWrite<ShadingRateImageHistory>();
 
             using (var builder = renderGraph.AddComputePass<PassData>(passName, out var passData, profilingSampler))
             {
@@ -97,14 +105,11 @@ namespace UnityEngine.Rendering.Universal.Internal
                 Matrix4x4 p_left = cameraData.GetProjectionMatrix(0);
                 Matrix4x4 p_right = cameraData.GetProjectionMatrix(rightEyeIndex);
                 Vector2 centerLeft = CalculateEyeCenter(p_left);
+
                 Vector2 centerRight = CalculateEyeCenter(p_right);
                 passData.eyeCenterCoords = new Vector4(centerLeft.x, centerLeft.y, centerRight.x, centerRight.y);
-                //Debug.Log($"EyeCenters: {passData.eyeCenterCoords}");
-                /// SLZ MODIFIED - Use fragment shading rate image when available
-                if (shadingRateTexture.IsValid())
-                {
-                    builder.UseTexture(shadingRateTexture, AccessFlags.ReadWrite);
-                }
+
+                builder.UseTexture(shadingRateTexture, AccessFlags.ReadWrite);
 
 
                 builder.SetRenderFunc((PassData data, ComputeGraphContext context) =>
