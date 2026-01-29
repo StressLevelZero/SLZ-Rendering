@@ -17,7 +17,7 @@ RWTexture2D<uint>
 float4 _EyeCenters;
 
 /** @brief 
- * Our barrel distortion function (r` = r(1+kr^P)) has an inflection point where the distorted radius starts to shrink with increasing radius.
+ * Our fake distortion function (r` = r(1+kr^P)) reaches a maximum beyond which the distorted radius starts to shrink.
  * To avoid artifacts, switch to a linear function beyond a cutoff, where the cutoff is the radius at which the barrel distortion's slope
  * equals the linear function's slope.
  *
@@ -26,13 +26,13 @@ float4 _EyeCenters;
  * @param slope	      Slope of the linear function
  * @return Radius at which to switch from the barrel distortion function to the linear function
  */
-float BarrelCutoffDist(float barrelCoeff, float power, float slope)
+float FakeDistortCutoffDist(float barrelCoeff, float power, float slope)
 {
 	return pow((slope - 1.0) / ((power + 1) * barrelCoeff), 1.0/power);
 }
 
 /** @brief Given the slope and cutoff distance, calculate the vertical offset of the linear function so that it is 
- *         tangent to the barrel distortion function.
+ *         tangent to the fake distortion function.
  *
  * @param barrelCoeff The barrel distortion coefficient
  * @param power       The power of the second term in the tunable barrel distortion function
@@ -44,15 +44,40 @@ float LinearFuncOffset(float barrelCoeff, float power, float cutoffDist, float s
 	return (cutoffDist * (1 + barrelCoeff * pow(cutoffDist, power))) - slope * cutoffDist;
 }
 
-
-
-float2 BarrelDistort(float2 scaledCoord, float2 center, float param1, float power, float cutoffDist, float linearSlope, float linearOffset, float scale)
+/** @brief Complete bullshit lens distortion function based on mis-understanding the Brown-Conrady distortion model,
+ *         and modified to use a parameterized power value rather than just 2. Somehow this works nicely and is controlable despite
+ *         having no basis on reality.
+ * @param centeredCoords  Screen coordinates centered on the distortion center and corrected for the screen aspect ratio.
+ * @param powerCoeff      Coefficient of the power term, basically a zoom factor.
+ * @param cutoffDist      Value calculated from BarrelCutoffDist. The fake lens distortion function has a local maxima beyond which the radius starts to shrink. switch to a linear function tangent to the curve beyond this point.
+ * @param linearSlope     Slope of the linear function, should be very small eg 1/32
+ * @param linearOffset    Vertical offset of the linear function such that it is tangent to the fake distortion function. Calculated via LinearFuncOffset
+ * @return lens-distorted UV coordinates
+ */
+float2 FakeDistort(float2 centeredCoords, float powerCoeff, float power, float cutoffDist, float linearSlope, float linearOffset)
 {
-	float radius = length(scaledCoord);
+	float radius = length(centeredCoords);
 	
-	float radiusDistorted = radius <= cutoffDist ? radius * (1 + param1 * pow(radius, power)) : linearSlope * radius + linearOffset;
+	float radiusDistorted = radius < cutoffDist ? radius * (1 + powerCoeff * pow(radius, power)) : linearSlope * radius + linearOffset;
 	
-	return scale * (radiusDistorted * normalize(scaledCoord));
+	return (radiusDistorted / radius) * centeredCoords;
+}
+
+/** @brief Inverse Radial lens distortion function going from undistorted space to distorted. 
+ *         Technically correct for basic lenses, but given that headset optics are very complex with extremely high fov, 
+ *         this probably isn't accurate. Additionally, for the purposes of calculating shading rates this isn't very good
+ *         as the uv-derivative pattern it produces is a fixed shape with only the scale being controlable.
+ *
+ * @param centeredCoords  Screen coordinates centered on the distortion center and corrected for the screen aspect ratio.
+ * @param powerCoeff      Coefficient of the power term in the forward distortion function, basically a zoom factor.
+ */
+float2 RadialDistort(float2 centeredCoords, float powerCoeff)
+{
+	float radius = length(centeredCoords);
+	
+	float radiusDistorted = (1.0 / (2.0 * powerCoeff * radius)) * (1 - sqrt(1 - 4 * powerCoeff * radius * radius));
+	
+	return (radiusDistorted * normalize(centeredCoords));
 }
 
 float2 SphereDistort(float2 uv, float sphereRadius)
@@ -63,48 +88,88 @@ float2 SphereDistort(float2 uv, float sphereRadius)
 	
 	return (sphereProj * normalize(uv));
 }
-
+	
+#define _DISTORT 0
 
 int2 GetShadingRate(float2 pixelCoords, float2 floatDim, int eyeIndex)
 {
 	float maxDim = max(floatDim.x, floatDim.y);
 	float minDim = min(floatDim.x, floatDim.y);
-	float2 eyeCenter = eyeIndex == 0 ? _EyeCenters.xy : _EyeCenters.zw;
+	float2 eyeCenter = (eyeIndex == 0 ? _EyeCenters.xy : _EyeCenters.zw);
+	eyeCenter.x = ((eyeIndex == 0 ? ceil(eyeCenter.x * floatDim.x) : floor(eyeCenter.x * floatDim.x) )) / floatDim.x;
+	eyeCenter.y = ((eyeIndex == 0 ? ceil(eyeCenter.y * floatDim.y) : floor(eyeCenter.y * floatDim.y))) / floatDim.y;
 	float2 ndc = (2.0 * (pixelCoords - floatDim * eyeCenter)) / minDim;
 	float invDim = 1.0f / minDim;
 	float2 center = _EyeCenters.xy;
 
 	float radius = 0.5;
-	float param = -0.33333333;
+	float fdCoeff = -2;
+	float radCoeff = -1.5;
 	float power = 2;
 	float slope = 1.0 / 32.0;
 	
-	float cutoff = BarrelCutoffDist(param, power, slope);
-	float zoom = 1.0 / cutoff; //sqrt((maxDim * maxDim) / (minDim * minDim) + 1);
-	float linOffset = LinearFuncOffset(param, power, cutoff, slope);
-	float2 uv00 = ndc / zoom; //(float2(id.xy)) * invDim;
-	if (length(uv00) >= cutoff)
-	{
-		return int2(2, 2);
-	}
-	float2 uv10 = float2(uv00.x + invDim, uv00.y);
-	float2 uv01 = float2(uv00.x, uv00.y + invDim);
-	float2 uv11 = float2(uv00.x + invDim, uv00.y + invDim);
-	uv00 = BarrelDistort(uv00, center, param, power, cutoff, slope, linOffset, zoom);
-	uv10 = BarrelDistort(uv10, center, param, power, cutoff, slope, linOffset, zoom);
-	uv01 = BarrelDistort(uv01, center, param, power, cutoff, slope, linOffset, zoom);
-	uv11 = BarrelDistort(uv11, center, param, power, cutoff, slope, linOffset, zoom);
-	//uv00 = SphereDistort(uv00, radius);
-	//uv10 = SphereDistort(uv10, radius);
-	//uv01 = SphereDistort(uv01, radius);
-	//uv11 = SphereDistort(uv11, radius);
+	float scale = 0.8;
+#if _DISTORT == 0
+	power = 1.5;
+	float cutoff = FakeDistortCutoffDist(fdCoeff, power, slope);
+	float linOffset = LinearFuncOffset(fdCoeff, power, cutoff, slope);
+	// Scale the coordinate range such that the inflection point of the barrel distortion function is at the edge of the screen.
+	scale *= (1.0 / cutoff); 
+#elif _DISTORT == 1
+	scale = 0.9;
+#elif _DISTORT == 2
+	
+#endif
+
+	float2 uv00 = ndc / scale; //(float2(id.xy)) * invDim;
+	float tileSize = invDim / scale;
+
+	
+	float2 uv10 = float2(uv00.x + tileSize, uv00.y);
+	float2 uv01 = float2(uv00.x, uv00.y + tileSize);
+	float2 uv11 = float2(uv00.x + tileSize, uv00.y + tileSize);
+
+	#if _DISTORT == 0
+		
+		if (length(uv00 + 0.5*tileSize) >= cutoff)
+		{
+			return int2(2, 2);
+		}
+		uv00 = scale * FakeDistort(uv00, fdCoeff, power, cutoff, slope, linOffset);
+		uv10 = scale * FakeDistort(uv10, fdCoeff, power, cutoff, slope, linOffset);
+		uv01 = scale * FakeDistort(uv01, fdCoeff, power, cutoff, slope, linOffset);
+		uv11 = scale * FakeDistort(uv11, fdCoeff, power, cutoff, slope, linOffset);
+	#elif _DISTORT == 1
+	uv00 = scale * SphereDistort(uv00, radius);
+	uv10 = scale * SphereDistort(uv10, radius);
+	uv01 = scale * SphereDistort(uv01, radius);
+	uv11 = scale * SphereDistort(uv11, radius);
+	#elif _DISTORT == 2
+	uv00 = scale * RadialDistort(uv00, radCoeff);
+	uv10 = scale * RadialDistort(uv10, radCoeff);
+	uv01 = scale * RadialDistort(uv01, radCoeff);
+	uv11 = scale * RadialDistort(uv11, radCoeff);
+	#endif
+	
+	
+	//Average the lengths of the sides of the tile so it is a square/parallelogram
 	float2 x = 0.5 * ((uv00 - uv10) + (uv01 - uv11));
 	float2 y = 0.5 * ((uv00 - uv01) + (uv10 - uv11));
-	float areaFraction = sqrt(length(cross(float3(normalize(x), 0), float3(normalize(y), 0))));
-	float dx = pow(0.9 * areaFraction * minDim * length(x), 2);
-	float dy = pow(0.9 * areaFraction * minDim * length(y), 2);
+	
+	// The square tile in the undistorted image will become a sheared/squashed parallelogram in the distorted output.
+	// scale the x/y derivatives by the area of the parallelogram to account for area loss.
+	float strain = (length(cross(float3(normalize(x), 0), float3(normalize(y), 0))));
+	
+	// calculate the x/y derivatives
+	float dx = strain * minDim * length(x);
+	float dy = strain * minDim * length(y);
+	
+	// Shading rate should be the inverse of the derivatives. It is expressed in powers of 2 with a max of 4
 	int2 rate = int2(round(log2(1.0 / float2(dx, dy))));
+	//rate.x = rate.x < (rate.y - 1) ? rate.y - 1 : rate.x;
+	//rate.y = rate.y < (rate.x - 1) ? rate.x - 1 : rate.y;
 	rate = clamp(rate, 0, 2);
+	
 	return rate;
 }
 
