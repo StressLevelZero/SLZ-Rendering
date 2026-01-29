@@ -2057,32 +2057,11 @@ namespace UnityEngine.Rendering.Universal
 
             SLZRendering.Runtime.ShadingRateImageHistory srHistory = history.GetHistoryForWrite<SLZRendering.Runtime.ShadingRateImageHistory>();
             bool needsUpdate = srHistory.Update(ref cameraDescriptor);
-            if (srHistory == null) { Debug.Log("Missing ShadingRateImageHistory"); return; }
+            //if (srHistory == null) { Debug.Log("Missing ShadingRateImageHistory"); return; }
             srHistory.GetCurrentTexture(out RTHandle srRt);
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
             resourceData.cameraShadingRateTexture = renderGraph.ImportTexture(srRt);
-            /*
-            UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
-            TextureDesc descriptor = new TextureDesc();
-            descriptor.format = ShadingRateInfo.graphicsFormat;
 
-            Vector2Int tileSize = ShadingRateInfo.imageTileSize;
-            descriptor.width = (cameraDescriptor.width + tileSize.x - 1) / tileSize.x;
-            descriptor.height = (cameraDescriptor.height + tileSize.y - 1) / tileSize.y;
-            descriptor.slices = cameraDescriptor.slices;
-            descriptor.dimension = cameraDescriptor.dimension;
-            descriptor.msaaSamples = MSAASamples.None;
-            
-            //Debug.Log($"Tile size: {tileSize.x}x{tileSize.y}, Camera descriptor width: {cameraDescriptor.width}x{cameraDescriptor.height}x{cameraDescriptor.slices}, new: {descriptor.width}x{descriptor.height}x{descriptor.slices}");
-
-            descriptor.useMipMap = false;
-            descriptor.autoGenerateMips = false;
-
-            descriptor.enableRandomWrite = true;
-            descriptor.enableShadingRate = true;
-
-            resourceData.cameraShadingRateTexture = CreateRenderGraphTexture(renderGraph, descriptor, "_CameraShadingRateTexture", true, Color.black, FilterMode.Point, TextureWrapMode.Clamp, true);
-            */
         }
         /// END SLZ MODIFIED
 
