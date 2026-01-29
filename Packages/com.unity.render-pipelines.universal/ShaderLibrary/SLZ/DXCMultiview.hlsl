@@ -2,20 +2,18 @@
 // Disgustingly cursed hack to make unity compile multiview shaders correctly with DXC for vulkan. 
 //    
 // Multiview does not exist in D3D11 (excluding a hacky nvidia d3d11 extension) or HLSL Shader Model 5.0.
-// The way Unity got their old FXC->HLSLCC->GLSL compiler chain to output the GLSL value for the view index that had no equivalent in HLSL was to modify hlslcc to search 
-// for a cbuffer with a magic name (OVR_Multiview) and replace it with references to the gl_ViewID_OVR builtin during translation to glsl. 
+// The way Unity got it to work with the default FXC->HLSLCC->GLSL compiler chain was to modify hlslcc to search 
+// for a cbuffer with a magic name (OVR_Multiview) and replace references to it with the gl_ViewID_OVR builtin during translation to glsl. 
 //
-// Since DXC does not go through hlslcc, the buffer isn't replaced and the shader uses the dummy buffer value as the eye index. However, D3D12 SM 6.1 added multiview
-// support with SV_ViewID being the HLSL semantic for the view index. Thus, it should be possible to get DXC to compile multiview shaders correctly; we just need to
-// use SV_ViewID instead of the dummy cbuffer value. Ideally, we would add SV_ViewID as a separate input to each stage as it is accessable from the vertex, tesselation,
-// and fragment stages. That would require re-writing every shader, so instead we can try to override the existing stereo and instancing macros that are already standard
-// in every shader's vertex input and output structs. The only macro in the vertex input struct is UNITY_VERTEX_INPUT_INSTANCE_ID. We can't put SV_ViewID in that as it
-// also gets put into the vertex output struct, and SV_ViewID cannot be written to. Instead, we redefine the POSITION semantic to have ViewIndex semantic appended after it.
-// This abuses the fact that HLSL allows every semantic to be numbered, using POSITION0 instead of POSITION to prevent recursion in the macro.
+// Since DXC does not go through hlslcc, the buffer isn't replaced and the shader uses the dummy buffer value as the eye index. Technically, D3D12 SM 6.1 added multiview
+// support so it ought to be trivial to just modify the multi-view macros to use the new SV_ViewID semantic. Unfortunately, unity only instructs the compiler to use SM 6.0 
+// so SV_ViewID isn't available. However, DXC comes to our rescue and provides us a method to inline raw SPIR-V instructions directly. This allows us to request the vulkan 
+// multiview extension and override a fake vertex input with the ViewIndex builtin.
 //
-// As a final fuck you from Unity, it turns out we can't use SV_ViewID. It was introduced in shader model 6.1. Unity explicitly asks DXC for SM 6.0 unless one of a small list
-// of pre-approved features are requested that happen to come from a later shader model. However, DXC comes to our rescue and provides us a method to inline SPIR-V instructions 
-// directly. This allows us to request the vulkan multiview extension and override a fake vertex input with the ViewIndex builtin.
+// Additionally, the way the stereo macros are written does not add any additional semantics to the vertex input. Single pass instanced just uses the instancing ID, and 
+// multiview used a constant buffer. So we don't have a straight-forward way to inject it into every shader's vertex struct. As a work-around, we redefine the POSITION
+// semantic to POSITION0 with the view index appended after it. This abuses the fact that HLSL allows every semantic to be numbered, using POSITION0 instead of POSITION
+// to prevent possible recursion.
 //
 // Additional changes were made to core/ShaderLibrary/UnityInstancing and universal/ShaderLibrary/UnityInput to modify the instancing and stereo macros to pass and store the new ViewIndex correctly
 
@@ -28,7 +26,6 @@
     #ifdef UNITY_INSTANCING_INCLUDED
         #error UnityInstancing included before DXCMultiview
     #endif
-
 
     #define POSITION POSITION0; [[vk::ext_decorate(/*Builtin*/11, /*ViewIndex*/4440)]] uint stereoTargetEyeIndexAsBlendIdx0 : VIEWIDX
     
