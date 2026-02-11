@@ -1,0 +1,15 @@
+[submodule "SLZ/GfxPlugin_SLZ/extern/inipp"]
+	path = SLZ/GfxPlugin_SLZ/extern/inipp
+	url = https://github.com/mcmtroffaes/inipp.git
+[submodule "SLZ/SLZTextureProcessor/extern/miniz"]
+	path = SLZ/SLZTextureProcessor/extern/miniz
+	url = https://github.com/richgel999/miniz.git
+[submodule "SLZ/SLZTextureProcessor/extern/cglm"]
+	path = SLZ/SLZTextureProcessor/extern/cglm
+	url = https://github.com/recp/cglm.git
+[submodule "SLZ/SLZTextureProcessor/extern/libspng"]
+	path = SLZ/SLZTextureProcessor/extern/libspng
+	url = https://github.com/randy408/libspng.git
+[submodule "SLZ/SLZTextureProcessor/extern/tinyexr"]
+	path = SLZ/SLZTextureProcessor/extern/tinyexr
+	url = https://github.com/syoyo/tinyexr.git
