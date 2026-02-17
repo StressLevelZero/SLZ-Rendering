@@ -1279,8 +1279,18 @@ namespace UnityEngine.Rendering.Universal
             UniversalLightData lightData = frameData.Get<UniversalLightData>();
             UniversalPostProcessingData postProcessingData = frameData.Get<UniversalPostProcessingData>();
 
-            /// SLZ MODIFIED - Render shading rate pass
+            if (!renderGraph.nativeRenderPassesEnabled)
+            {
+                RTClearFlags clearFlags = (RTClearFlags) GetCameraClearFlag(cameraData);
+
+                if (clearFlags != RTClearFlags.None)
+                    ClearTargetsPass.Render(renderGraph, resourceData.activeColorTexture, resourceData.activeDepthTexture, clearFlags, cameraData.backgroundColor);
+            }
+
+            /// SLZ MODIFIED - Add fragment shading rate image
+            #if !UNITY_ANDROID
             m_PopulateShadingRatePass.Render(renderGraph, frameData, resourceData.cameraShadingRateTexture);
+            #endif
             /// END SLZ MODIFIED
 
             if (renderingData.stencilLodCrossFadeEnabled)
@@ -2211,6 +2221,9 @@ namespace UnityEngine.Rendering.Universal
         /// SLZ MODIFIED - Add shading rate image
         void CreateShadingRateTexture(RenderGraph renderGraph, UniversalCameraData cameraData, TextureDesc cameraDescriptor)
         {
+#if UNITY_ANDROID // Quest/Android uses fragment density map, which is incompatible with fragment shading rate image!
+            return;
+#else
             if (!ShadingRateInfo.supportsPerImageTile)
             {
                 return;
@@ -2229,7 +2242,7 @@ namespace UnityEngine.Rendering.Universal
             srHistory.GetCurrentTexture(out RTHandle srRt);
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
             resourceData.cameraShadingRateTexture = renderGraph.ImportTexture(srRt);
-
+#endif
         }
         /// END SLZ MODIFIED
 
