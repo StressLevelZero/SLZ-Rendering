@@ -1,6 +1,0 @@
-C:/Projects/CustomURP6/SLZ-Rendering/SLZ/GfxPlugin_SLZ/build-android-arm64-v8a/CMakeFiles/GraphicsConfig.dir
-C:/Projects/CustomURP6/SLZ-Rendering/SLZ/GfxPlugin_SLZ/build-android-arm64-v8a/CMakeFiles/ApplicationPaths.dir
-C:/Projects/CustomURP6/SLZ-Rendering/SLZ/GfxPlugin_SLZ/build-android-arm64-v8a/CMakeFiles/GfxPlugin_SLZ.dir
-C:/Projects/CustomURP6/SLZ-Rendering/SLZ/GfxPlugin_SLZ/build-android-arm64-v8a/CMakeFiles/JniInterface.dir
-C:/Projects/CustomURP6/SLZ-Rendering/SLZ/GfxPlugin_SLZ/build-android-arm64-v8a/CMakeFiles/edit_cache.dir
-C:/Projects/CustomURP6/SLZ-Rendering/SLZ/GfxPlugin_SLZ/build-android-arm64-v8a/CMakeFiles/rebuild_cache.dir

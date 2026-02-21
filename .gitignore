@@ -51,6 +51,6 @@ TestProjects/UniversalGraphicsTest_Lighting/Packages/packages-lock.json
 com.unity.template-hd/InitCodeMarker
 gfx-sdet-tools
 
-SLZ/SLZTextureProcessor/build*
+SLZ/SLZTextureProcessor/build*/**
 
-SLZ/GfxPlugin_SLZ/build*
+SLZ/GfxPlugin_SLZ/build*/**
