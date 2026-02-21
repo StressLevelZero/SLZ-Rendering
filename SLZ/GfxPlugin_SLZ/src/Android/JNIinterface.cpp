@@ -9,7 +9,7 @@
 #include <jni.h>
 #define PRINTF(...) __android_log_print(ANDROID_LOG_INFO, "SlzGfx", __VA_ARGS__)
 #define PRINTF_ERROR(...) __android_log_print(ANDROID_LOG_ERROR, "SlzGfx", __VA_ARGS__)
-#define RETURN_ON_NULL(var) if (!var) { PRINTF_ERROR(("JNI Hook: Failed to get %s\n", #var)); return JNI_VERSION_1_6;}
+#define RETURN_ON_NULL(var) if (!var) { PRINTF_ERROR(("JNI Hook: Failed to get " #var "\n")); return JNI_VERSION_1_6;}
 
 namespace fs = std::filesystem;
 
@@ -31,11 +31,11 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
     s_jni = std::make_unique<jniInterface>();
     s_jni->m_JavaVM = vm;
 
-	JNIEnv* env; 
-	if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK)
-	{
-		return JNI_ERR;
-	}
+    JNIEnv* env; 
+    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK)
+    {
+        return JNI_ERR;
+    }
     s_jni->m_JNIEnv = env;
     
     // Get the current application context

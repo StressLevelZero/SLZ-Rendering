@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.27)
+cmake_minimum_required(VERSION 3.22)
 
-if(${CMAKE_VERSION} VERSION_LESS 3.26)
+if(${CMAKE_VERSION} VERSION_LESS 3.5)
     cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 else()
-    cmake_policy(VERSION 3.27)
+    cmake_policy(VERSION 3.22)
 endif()
 
 project(GfxPlugin_SLZ
@@ -100,5 +100,8 @@ add_library(JniInterface STATIC
     )
 
 target_link_libraries(ApplicationPaths PUBLIC JniInterface)
+
+target_link_libraries(ApplicationPaths INTERFACE android log)
+target_link_libraries(GfxPlugin_SLZ INTERFACE android log)
 
 endif()

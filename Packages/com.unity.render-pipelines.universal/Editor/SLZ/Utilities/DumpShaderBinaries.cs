@@ -68,7 +68,7 @@ namespace SLZ.SLZEditorTools
         { ShaderType.Geometry, "geom" },
         { ShaderType.Hull, "hs" },
         { ShaderType.Domain, "ds" },
-        { ShaderType.Surface, "surf" },
+        //{ (ShaderType)6, "surf" },
         { ShaderType.RayTracing, "rayt" }
     };
 
