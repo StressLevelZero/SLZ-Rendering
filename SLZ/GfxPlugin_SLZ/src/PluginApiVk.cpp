@@ -7,7 +7,7 @@
 #include <shellapi.h>
 #endif
 
-#if defined(PLATFORM_LINUX)
+#if !defined(PLATFORM_WINDOWS)
 #include "alloca.h"
 #define _malloca(size) alloca(size)
 #define _freea(ptr)

@@ -7,13 +7,13 @@
 class jniInterface
 {
 public:
-	void* m_JavaVM;
-	void* m_JNIEnv;
-	void* m_Context;
-	std::filesystem::path externalCacheDir;
-	std::filesystem::path externalFilesDir;
+    void* m_JavaVM;
+    void* m_JNIEnv;
+    void* m_Context;
+    std::filesystem::path externalCacheDir;
+    std::filesystem::path externalFilesDir;
 public:
-	jniInterface();
+    jniInterface();
 };
 
 extern std::unique_ptr<jniInterface> s_jni;

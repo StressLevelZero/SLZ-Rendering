@@ -11,6 +11,10 @@
 #include <iostream>
 #include <format>
 
+#if defined(PLATFORM_ANDROID)
+#include <android/log.h>
+#endif
+
 
 class PluginAPI;
 
@@ -56,8 +60,8 @@ public:
             case (kUnityLogTypeLog):       priority = ANDROID_LOG_INFO;  break;
             case (kUnityLogTypeException): priority = ANDROID_LOG_FATAL; break;
             }
-            std::string message2 = std::format("{} : at {}:{}", message, fileName, fileLine);
-            __android_log_print(priority, s_PluginNameShort, message2);
+            //std::string message2 = std::format("{} : at {}:{}", message, fileName, fileLine);
+            __android_log_print(priority, s_PluginNameShort, "%s at %s : line %d", message, fileName, fileLine);
 #endif
 		}
 	}
