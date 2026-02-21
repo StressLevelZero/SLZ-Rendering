@@ -46,7 +46,7 @@ int ApplicationPaths::PopulatePathsAndEditor()
 
     ApplicationPaths::isEditor = false; // There's no android editor
     ApplicationPaths::peristentDataPath = s_jni->externalFilesDir;
-
+    return s_jni->externalFilesDir.empty() ? 0 : 1;
 #else  // NOT PLATFORM_ANDROID
 
     int errorCode = 0;
@@ -310,10 +310,13 @@ fs::path AppPathsPrivate::GetLibAddress(int& errorCode)
 {
     Dl_info dlinfo = {};
 
-    errorCode = dladdr((void*)DummyFunc, &dlinfo);
+    void* DummyFuncPtr = (void*)DummyFunc;
+    errorCode = dladdr(DummyFuncPtr, &dlinfo);
 
-    if (errorCode != 0)
+    if (errorCode == 0)
     {
+        PluginState::Log(kUnityLogTypeError, std::format("Failed to find library address, function address is {0:#x}, dlinfo path is : {1}", (unsigned long)DummyFuncPtr, (const char*)dlinfo.dli_fname).c_str(), __FILE__, __LINE__);
+
         return fs::path("");
     }
 
@@ -330,7 +333,12 @@ fs::path AppPathsPrivate::GetRootPersistentDataPath(int& errorCode)
     }
     fs::path rootPersistentPath((const char8_t*)xdgConfigHome);
     rootPersistentPath /= u8"unity3d";
+
     bool exists = fs::exists(rootPersistentPath);
+    if (!exists)
+    {
+        PluginState::Log(kUnityLogTypeError, std::format("Config home directory does not exist?: {}", (char*)(rootPersistentPath.u8string().c_str())).c_str(), __FILE__, __LINE__);
+    }
     errorCode = exists ? 0 : 1;
     return rootPersistentPath;
 }
