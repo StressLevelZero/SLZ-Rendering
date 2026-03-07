@@ -40,7 +40,7 @@ if (NOT EXISTS  "${UNITY_PLUGIN_HEADERS}/IUnityInterface.h")
 endif()
 
 # Import the vulkan SDK
-find_package(Vulkan REQUIRED FATAL_ERROR)
+find_package(Vulkan REQUIRED )
 
 
 
@@ -50,6 +50,13 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" TARGET_ARCH)
     set(STATIC_LIB_EXT "lib")
     set(STATIC_LIB_PREFIX "")
+    set(VS_WINDOWS_TARGET_PLATFORM_MIN_VERSION 10.0.22621.0)
+    set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_MIN_VERSION 10.0.22621.0)
+    if (VS_WINDOWS_TARGET_PLATFORM_MIN_VERSION VERSION_LESS 10.0.22621.0)
+        set(VS_WINDOWS_TARGET_PLATFORM_MIN_VERSION 10.0.22621.0)
+    endif()
+set(CMAKE_CXX_STANDARD 26)
+    
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(TARGET_PREFIX "android")
     set(TARGET_ARCH "${ANDROID_ABI}")
@@ -102,6 +109,6 @@ add_library(JniInterface STATIC
 target_link_libraries(ApplicationPaths PUBLIC JniInterface)
 
 target_link_libraries(ApplicationPaths INTERFACE android log)
-target_link_libraries(GfxPlugin_SLZ INTERFACE android log)
+target_link_libraries(GfxPlugin_SLZ    INTERFACE android log)
 
 endif()

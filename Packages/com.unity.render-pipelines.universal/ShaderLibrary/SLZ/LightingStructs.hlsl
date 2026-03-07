@@ -1,6 +1,6 @@
 namespace SLZ
 {
-    class LightMeshData
+    struct LightMeshData
     {
         float3 position;
         half3  normal;
@@ -14,14 +14,14 @@ namespace SLZ
         half3  vertexLighting;
     };
 
-    class LightMeshDataAniso : LightMeshData
+    struct LightMeshDataAniso : LightMeshData
     {
         half3 bitangent;
         half3 tangent;
         half  visLambdaView; //factor used in the anisotropic visibility function that depends on the view, normal, tangent, and bitangent
     };
 
-    class LightPhysData
+    struct LightPhysData
     {
         half3 albedo;
         half  perceptualRoughness;
@@ -32,7 +32,7 @@ namespace SLZ
         half  alpha;
     };
 
-    class LightPhysDataAniso : LightPhysData
+    struct LightPhysDataAniso : LightPhysData
     {
         half anisoAspect;
         half roughnessT;

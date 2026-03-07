@@ -390,7 +390,7 @@ public:
 
     virtual uint32_t GetShadingRateBlockSize();
     uint32_t GetMaxFragmentSize();
-
+    uint32_t SupportsLayeredShadingRate() { return s_SupportsLayeredShadingRate; }
 private:
 
 };

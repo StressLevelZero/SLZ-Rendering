@@ -4,6 +4,7 @@
 // SLZ MODIFIED
 #include "Packages/com.stresslevelzero.urpconfig/include/DXCUpdateState.hlsl"
 #include "Packages/com.stresslevelzero.urpconfig/include/ProjectSymbols.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/HLSL2021Support.hlsl"
 // END SLZ MODIFIED
 
 // VT is not supported in URP (for now) this ensures any shaders using the VT
