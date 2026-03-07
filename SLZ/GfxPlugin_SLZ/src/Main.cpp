@@ -192,6 +192,15 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
     }
 }
 
+extern "C" uint32_t UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SupportsLayeredShadingRate()
+{
+    if (PluginState::api)
+    {
+        return PluginState::api->SupportsLayeredShadingRate();
+    }
+    return 0;
+}
+
 extern "C" UnityRenderingEvent UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRenderEventFunc()
 {
     return OnRenderEvent;
