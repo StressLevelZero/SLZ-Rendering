@@ -13,7 +13,7 @@ public:
 
     virtual void OnRenderEventWithData(int eventID, void* data) {};
     virtual void OnRenderEvent(int eventID) {};
-
+    virtual uint32_t SupportsLayeredShadingRate() { return 0; };
 };
 
 #endif

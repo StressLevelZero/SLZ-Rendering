@@ -241,7 +241,12 @@ half3 BoxProjectedCubemapDirection(half3 reflectionWS, float3 positionWS, float4
     // Is this probe using box projection?
     if (cubemapPositionWS.w > 0.0f)
     {
+        /// SLZ MODIFIED - Comply with HLSL 2021's requirement for using the 'select' function instead of ternary operators on bool vectors
+        /*
         float3 boxMinMax = (reflectionWS > 0.0f) ? boxMax.xyz : boxMin.xyz;
+        */
+        float3 boxMinMax = select(reflectionWS > 0.0f, boxMax.xyz, boxMin.xyz);
+        // END SLZ MODIFIED
         half3 rbMinMax = half3(boxMinMax - positionWS) / reflectionWS;
 
         half fa = half(min(min(rbMinMax.x, rbMinMax.y), rbMinMax.z));
