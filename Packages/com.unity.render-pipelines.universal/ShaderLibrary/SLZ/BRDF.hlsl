@@ -223,6 +223,125 @@ namespace SLZ
         }
     };
     #define AnisoGGXParams(n,t,b,v,l) AnisoGGXParams::ctor(n,t,b,v,l)
+    
+    /** Calculate the lambda visibility factor used in the Smith-GGX visibility function
+     * @param tangent       tangent vector
+     * @param bitangent     bitangent vector
+     * @param roughnessT    roughness in the direction of the tangent
+     * @param roughnessB    roughness in the direction of the bitangent
+     */
+    half CalculateVisLambdaView(half NoV, half3 viewDir, half3 tangent, half3 bitangent, half roughnessT, half roughnessB)
+    {
+        half ToV = dot(tangent, viewDir);
+        half BoV = dot(bitangent, viewDir);
+        return length(half3(roughnessT * ToV, roughnessB * BoV, NoV * NoV));
+    }
+    
+    /**
+     * Burley anisotropic NDF, optimized for mobile half precision.
+     * 
+     * Normal Burley aniso formula:
+     * 
+     * N = 1/(pi) * 1/(rT * rB) * 1/((ToH / rT)^2 + (BoH / rB)^2 + NoH^2)^2
+     * 
+     * There are several major sources of error here. First off NoH^2 is severely
+     * lacking in precision around NoH close to 1, which is right where the 
+     * specular highlight is. This is easy to fix, just use Lagrange's identity
+     * to replace it with 1 - dot(cross(N,H),cross(N,H)), which has much better
+     * precision where we need it. Secondly, we have the dots of the tangent/
+     * bitangent divided by their anisotropic roughnesses. When the roughness is
+     * low, these start aliasing heavily. If we multiply the equation by
+     * (rT * rB) / (rT * rB), 
+     * 
+     * N = 1/pi * (rT * rB) / (rT * rB)^2 * 1/((ToH / rT)^2 + (BoH / rB)^2 + NoH^2)^2
+     *   = 1/pi * (rT * rB) / ( (rT * rB) * ( (ToH^2 / rT^2) + (BoH^2 / rB^2) + NoH^2)^2
+     *   = 1/pi * (rT * rB) / ( ToH^2 * (rB/rT) + BoH^2 * (rT/rB) + (rT * rB) * NoH^2)^2
+     * 
+     * Now instead of dividing the square of the tangent & bitangent dots by their
+     * roughnesses, we are multiplying by the ratio of the two roughnesses. This
+     * ratio can be reduced
+     * 
+     * A = rB / rT = (rI * (1 - a)) / (rI * (1 + a)) = (1 - a) / (1 + a)
+     * 
+     * where rI is the isotropic roughness, and a is the aniso factor. This ratio
+     * no longer depend on roughness and only on the aspect ratio, and this removes
+     * the aliasing issues related to these terms. 
+     *
+     * Finally division by ( A * ToH^2  + (1/A) * BoH^2 + (rT * rB) * NoH^2)^2 
+     * also causes aliasing issues. When roughness is low, this term is exceedingly
+     * tiny, and taking the reciprocal results in a very large number with severe
+     * loss of floating point precision. However, the dividend is rT * rB, a small
+     * number when roughness is low. If instead we use (sqrt(rT * rB))^2, we can
+     * move sqrt(rT * rB) into the square term, then
+     * 
+     * N = 1/pi * ( sqrt(rT*rB) / ( A * ToH^2  + (1/A) * BoH^2 + (rT * rB) * NoH^2) )^2
+     * 
+     * Now the smallness of sqrt(rT*rB) cancels out the smallness of the sum of the dots,
+     * the result is closer to 1, and the square of the number is significantly smaller
+     * and does not get rounded as heavily.
+     * 
+     * @param NoH2          Square of the dot product of the normal with half view-light vector
+     * @param ToH           Dot product of the tangent with half view-light vector
+     * @param BoH           Dot product of the bitangent with half view-light vector
+     * @param roughnessT    Anisotropic roughness value in the direction of the tangent
+     * @param roughnessB    Anisotropic roughness value in the direction of the bitangent
+     * @param aspectRatio   The anisotropic roughness aspect ratio, where -1
+     *                      stretches the highlight along the bitangent, 0 is
+     *                      isotropic, and 1 stretches it along the tangent
+     * @return Anisotropic GGX normal distribution value 
+     */
+    half GGXNdfAniso(half NoH2, half ToH, half BoH, half roughnessT, half roughnessB, half aspectRatio)
+    {
+        half roughProduct = roughnessT * roughnessB;
+        half aspectTerm = (1.0h - aspectRatio) / (1.0h + aspectRatio); // roughnessB/roughnessT = (rough * (1 - aspectRatio))/(rough * (1 + aspectRatio)) 
+        half2 aVec = half2(ToH * aspectTerm, BoH / aspectTerm);
+        half b = dot(aVec, aVec) + NoH2 * roughProduct;
+        half w2 = rcp(b * rsqrt(roughProduct));
+        w2 *= w2;
+        return min(w2 * (half(1.0) / half(PI)), 100);
+    }
+
+    /**
+     * Heitz height-correlated, anisotropic Smith-GGX visibility function (specular geometric shadowing)
+     * taken from Google Filament.
+     * 
+     * @param NoV           Normal-view dot product
+     * @param NoL           Normal-light dot product
+     * @param ToL           Tangent-light dot product
+     * @param BoL           Bitangent-light dot product
+     * @param visLambdaView Precalculated term, stored in fragData and calculated
+     *                      by SLZFragDataAddAniso
+     * @param roughnessT    roughness in the tangent direction
+     * @param roughnessB    roughness in the bitangent direction
+     */
+    half SmithVisibilityAniso(half NoV, half NoL, half ToL, half BoL, half visLambdaView, half roughnessT, half roughnessB)
+    {
+        NoL = abs(NoL) + 1e-5;
+        half lambdaV = NoL * visLambdaView;
+        half lambdaL = length(half3(roughnessT * ToL, roughnessB * BoL, NoL));
+        return 0.5 / (lambdaL + lambdaV);
+    }
+
+    /** Punctual specular using Anisotropic GGX normal distibution function, and the normal Smith visibility and Schlick fresnel.
+     *
+     * @param ggx           Specular parameters
+     * @param NoV           dot product of the normal and view directions
+     * @param roughness     non-perceptual roughness
+     * @param reflectance0  Specular reflectance at normal incidence
+     * @param reflectance90 (Optional) Specular reflectance at grazing incidence. Default is (1,1,1)
+     */
+    half3 SpecBrdfAnisoFp16(const AnisoGGXParams ggx, half NoV, half roughnessT, half roughnessB, half anisoAspect, half visLambda, const half3 reflectance0, const half3 reflectance90 = half3(1, 1, 1))
+    {
+       
+        half N = GGXNdfAniso(ggx.NoH2, ggx.ToH, ggx.BoH, roughnessT, roughnessB, anisoAspect);
+        half D = SmithVisibilityAniso(NoV, ggx.NoL, ggx.ToL, ggx.BoL, visLambda, roughnessT, roughnessB);
+        half3 F = SchlickFresnel(ggx.LoH, reflectance0, reflectance90);
+    
+        half3 specularTerm = (N * D * F) - HALF_MIN;
+        specularTerm = clamp(specularTerm, 0.0, 100.0);
+    
+        return specularTerm;
+    }
 
 }
 
