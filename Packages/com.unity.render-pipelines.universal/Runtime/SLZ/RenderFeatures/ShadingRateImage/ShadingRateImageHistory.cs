@@ -86,8 +86,9 @@ namespace SLZRendering.Runtime
             Vector2Int tileSize = ShadingRateInfo.imageTileSize;
             newDesc.width  = (cameraTgtDesc.width  + tileSize.x - 1) / tileSize.x;
             newDesc.height = (cameraTgtDesc.height + tileSize.y - 1) / tileSize.y;
-            newDesc.volumeDepth = SystemInfo.graphicsDeviceType == GraphicsDeviceType.Direct3D12 ? 1 : cameraTgtDesc.slices;
-            newDesc.dimension = SystemInfo.graphicsDeviceType == GraphicsDeviceType.Direct3D12 ? TextureDimension.Tex2D : cameraTgtDesc.dimension;
+            bool supportsLayeredAttachments = SLZ.GfxPlugin_SLZ.SupportsLayeredShadingRate() != 0;
+            newDesc.volumeDepth = supportsLayeredAttachments ? cameraTgtDesc.slices : 1;
+            newDesc.dimension   = supportsLayeredAttachments ? cameraTgtDesc.dimension : TextureDimension.Tex2D;
             newDesc.msaaSamples = 1;
 
             newDesc.useMipMap = false;
