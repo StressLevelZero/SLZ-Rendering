@@ -29,3 +29,6 @@ CALL "C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Com
 ```
 
 Note that I set DLLVM_ENABLE_ASSERTIONS=Off here. It was previously set to On in my last used build confing in the CMakeSettings.json used by VS gui cmake. I'm unsure if I accidentally copy-pasted this from the debug build config, maybe this is what was causing the issue with building with VS and not just visual studio not setting NDEBUG during project generation? Or maybe there was a legitimate reason that I've forgottent that DLLVM_ENABLE_ASSERTIONS needs to be on? Building with it off seems to work fine...
+
+2026-03-20
+Update to force HLSL 2021. Since unity 6 updated to 1.7.2308, it started specifying hlsl 2018 in the arguments passed to DXC. Modified the compiler to change hlsl arguments less than 2021 to 2021.
