@@ -1,4 +1,5 @@
 using SLZ.SLZEditorTools;
+using System;
 using System.IO;
 using UnityEngine;
 
@@ -20,14 +21,17 @@ namespace SLZ.DXCUpdater
             }
 
             string comment = patched ? "" : "//";
+            int patchedInt = patched ? 1 : 0;
+            uint versionNum = ((major & 0x1FFU) << 22) | ((minor & 0x3FFU) << 12) | (patch & 0xFFFU);
             string file =
-                $"#ifndef SLZ_DXC_STATE\n" +
-                $"\t#define SLZ_DXC_STATE\n" +
-                $"\t{comment}#define SLZ_DXC_UPDATED\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_MAJOR {major}\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_MINOR {minor}\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_PATCH {patch}\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_BUILD {build}\n" +
+            $"#ifndef SLZ_DXC_STATE\n" +
+            $"\t#define SLZ_DXC_STATE\n" +
+            $"\t{comment}#define SLZ_DXC_UPDATED {patchedInt}\n" +
+            $"\t#define SLZ_DXC_VERSION 0x{versionNum.ToString("x08")}\n" +
+                $"\t#define SLZ_DXC_VERSION_MAJOR {major}\n" +
+                $"\t#define SLZ_DXC_VERSION_MINOR {minor}\n" +
+                $"\t#define SLZ_DXC_VERSION_PATCH {patch}\n" +
+                $"\t#define SLZ_DXC_VERSION_BUILD {build}\n" +
                 $"#endif";
             string original = File.ReadAllText(includePath);
             if (!string.Equals(original, file, System.StringComparison.InvariantCulture))
