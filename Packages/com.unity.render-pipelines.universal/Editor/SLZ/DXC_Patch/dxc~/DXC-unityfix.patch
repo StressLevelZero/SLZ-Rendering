@@ -1,7 +1,145 @@
+diff --git a/CMakeSettings.json b/CMakeSettings.json
+index 56614f8f6..36af24c97 100644
+--- a/CMakeSettings.json
++++ b/CMakeSettings.json
+@@ -3,13 +3,25 @@
+     {
+       "name": "x64-Release",
+       "generator": "Ninja",
+-      "configurationType": "RelWithDebInfo",
++      "configurationType": "MinSizeRel",
+       "buildRoot": "${projectDir}\\out\\build\\${name}",
+       "installRoot": "${projectDir}\\out\\install\\${name}",
+       "cmakeCommandArgs": "-C ${projectDir}\\cmake\\caches\\PredefinedParams.cmake -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_LIT_ARGS=\"-v\"",
+       "buildCommandArgs": "-v",
+       "ctestCommandArgs": "",
+-      "inheritEnvironments": [ "msvc_x64_x64" ]
++      "inheritEnvironments": [ "msvc_x64_x64" ],
++      "variables": [
++        {
++          "name": "LLVM_ENABLE_WARNINGS",
++          "value": "False",
++          "type": "BOOL"
++        },
++        {
++          "name": "SPIRV_WERROR",
++          "value": "False",
++          "type": "BOOL"
++        }
++      ]
+     },
+     {
+       "name": "x64-Debug",
+@@ -20,7 +32,19 @@
+       "cmakeCommandArgs": "-C ${projectDir}\\cmake\\caches\\PredefinedParams.cmake -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_LIT_ARGS=\"-v\"",
+       "buildCommandArgs": "-v",
+       "ctestCommandArgs": "",
+-      "inheritEnvironments": [ "msvc_x64_x64" ]
++      "inheritEnvironments": [ "msvc_x64_x64" ],
++      "variables": [
++        {
++          "name": "SPIRV_WERROR",
++          "value": "False",
++          "type": "BOOL"
++        },
++        {
++          "name": "LLVM_ENABLE_WARNINGS",
++          "value": "False",
++          "type": "BOOL"
++        }
++      ]
+     },
+     {
+       "name": "x64-clang-cl-Release",
+@@ -28,10 +52,32 @@
+       "configurationType": "RelWithDebInfo",
+       "buildRoot": "${projectDir}\\out\\build\\${name}",
+       "installRoot": "${projectDir}\\out\\install\\${name}",
+-      "cmakeCommandArgs": "-C ${projectDir}\\cmake\\caches\\PredefinedParams.cmake -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_LIT_ARGS=\"-v\"",
++      "cmakeCommandArgs": "-C ${projectDir}\\cmake\\caches\\PredefinedParams.cmake -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_LIT_ARGS=\"-v\" -DCMAKE_CXX_FLAGS=\"/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR=1 /D NDEBUG=1 -Wno-unsafe-buffer-usage -Wno-c++98-compat\" ",
+       "buildCommandArgs": "-v",
+       "ctestCommandArgs": "",
+-      "inheritEnvironments": [ "clang_cl_x64_x64" ]
++      "inheritEnvironments": [ "clang_cl_x64_x64" ],
++      "variables": [
++        {
++          "name": "SPIRV_WERROR",
++          "value": "False",
++          "type": "BOOL"
++        },
++        {
++          "name": "LLVM_ENABLE_WARNINGS",
++          "value": "False",
++          "type": "BOOL"
++        },
++        {
++          "name": "CLANG_CL",
++          "value": "True",
++          "type": "BOOL"
++        },
++        {
++          "name": "SPIRV_BUILD_TESTS",
++          "value": "False",
++          "type": "BOOL"
++        }
++      ]
+     },
+     {
+       "name": "x64-clang-cl-Debug",
+@@ -42,7 +88,19 @@
+       "cmakeCommandArgs": "-C ${projectDir}\\cmake\\caches\\PredefinedParams.cmake -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_LIT_ARGS=\"-v\"",
+       "buildCommandArgs": "-v",
+       "ctestCommandArgs": "",
+-      "inheritEnvironments": [ "clang_cl_x64_x64" ]
++      "inheritEnvironments": [ "clang_cl_x64_x64" ],
++      "variables": [
++        {
++          "name": "SPIRV_WERROR",
++          "value": "False",
++          "type": "BOOL"
++        },
++        {
++          "name": "LLVM_ENABLE_WARNINGS",
++          "value": "False",
++          "type": "BOOL"
++        }
++      ]
+     },
+     {
+       "name": "x86-Release",
+@@ -67,4 +125,4 @@
+       "inheritEnvironments": [ "msvc_x86_x64" ]
+     }
+   ]
+-}
++}
+\ No newline at end of file
+diff --git a/external/SPIRV-Tools b/external/SPIRV-Tools
+index 0cfe9e721..1dc261887 160000
+--- a/external/SPIRV-Tools
++++ b/external/SPIRV-Tools
+@@ -1 +1 @@
+-Subproject commit 0cfe9e7219148716dfd30b37f4d21753f098707a
++Subproject commit 1dc2618879f65511d5d9e501f2dd0b6cc6335d17
 diff --git a/lib/DxcSupport/HLSLOptions.cpp b/lib/DxcSupport/HLSLOptions.cpp
-index 94103077f..cf84e334a 100644
+index 94103077f..dd97f823c 100644
 --- a/lib/DxcSupport/HLSLOptions.cpp
 +++ b/lib/DxcSupport/HLSLOptions.cpp
+@@ -354,10 +354,10 @@ namespace hlsl {
+ 
+ LangStd parseHLSLVersion(llvm::StringRef Ver) {
+   return llvm::StringSwitch<hlsl::LangStd>(Ver)
+-      .Case("2015", hlsl::LangStd::v2015)
+-      .Case("2016", hlsl::LangStd::v2016)
+-      .Case("2017", hlsl::LangStd::v2017)
+-      .Case("2018", hlsl::LangStd::v2018)
++      .Case("2015", hlsl::LangStd::v2021)
++      .Case("2016", hlsl::LangStd::v2021)
++      .Case("2017", hlsl::LangStd::v2021)
++      .Case("2018", hlsl::LangStd::v2021)
+       .Case("2021", hlsl::LangStd::v2021)
+       .Case("202x", hlsl::LangStd::v202x)
+       .Default(hlsl::LangStd::vError);
 @@ -471,6 +471,14 @@ int ReadDxcOpts(const OptTable *optionTable, unsigned flagsToInclude,
      opts.TargetProfile = Args.getLastArgValue(OPT_target_profile);
    }
@@ -28,6 +166,18 @@ index 94103077f..cf84e334a 100644
  
    llvm::APInt maxId;
  
+diff --git a/solution_build.bat b/solution_build.bat
+new file mode 100644
+index 000000000..7b8fbeb57
+--- /dev/null
++++ b/solution_build.bat
+@@ -0,0 +1,5 @@
++CALL "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
++SET projectDir=%cd%
++SET BUILD_TYPE=RelWithDebInfo
++SET BUILD_DIR=out7
++CALL "C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -G "Visual Studio 17 2022" -T ClangCl -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -C %projectDir%\cmake\caches\PredefinedParams.cmake -DCLANG_CL=True -DSPIRV_WERROR=False -DLLVM_ENABLE_WARNINGS=False -DSPIRV_BUILD_TESTS=False -DLLVM_ENABLE_ASSERTIONS=Off -DLLVM_ENABLE_WERROR=False -DLLVM_LIT_ARGS="-v" -DCMAKE_CXX_FLAGS="/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR=1 /D NDEBUG=1 -Wno-error -Wno-unsafe-buffer-usage -Wno-c++98-compat -Wno-switch -Wno-unused-variable -Wno-cast-function-type-mismatch"
+\ No newline at end of file
 diff --git a/tools/clang/tools/dxcompiler/DXCompiler.cpp b/tools/clang/tools/dxcompiler/DXCompiler.cpp
 index c54844144..21081bd52 100644
 --- a/tools/clang/tools/dxcompiler/DXCompiler.cpp
@@ -42,3 +192,29 @@ index c54844144..21081bd52 100644
    HRESULT hr;
    bool fsSetup = false, memSetup = false;
    IFC(DxcInitThreadMalloc());
+diff --git a/tools/clang/tools/dxcompiler/dxcompilerobj.cpp b/tools/clang/tools/dxcompiler/dxcompilerobj.cpp
+index 0ee0d0076..e9e868bf8 100644
+--- a/tools/clang/tools/dxcompiler/dxcompilerobj.cpp
++++ b/tools/clang/tools/dxcompiler/dxcompilerobj.cpp
+@@ -52,6 +52,7 @@
+ 
+ #ifdef _WIN32
+ #include "dxcetw.h"
++#include "debugapi.h"
+ #endif
+ #include "dxcompileradapter.h"
+ #include "dxcshadersourceinfo.h"
+@@ -547,6 +548,13 @@ public:
+     bool bPreprocessStarted = false;
+     DxilShaderHash ShaderHashContent;
+     DxcThreadMalloc TM(m_pMalloc);
++    //std::wstring debugMSG = L"DXC Args: ";
++    //for (int i = 0; i < argCount; i++)
++    //{
++    //  debugMSG += pArguments[i];
++    //  debugMSG += L" ";
++    //}
++    //OutputDebugStringW(debugMSG.c_str());
+ 
+     try {
+       DefaultFPEnvScope fpEnvScope;

@@ -23,7 +23,6 @@ public class SLZGlobals : ScriptableRendererFeature
     public static ulong frameCount { get { return s_FrameCount; } }
     static ulong s_FrameCount = 0u;
     internal static void IncrementFrameCounter(ScriptableRenderContext ctx, List<Camera> cameras) { s_FrameCount++; }
-    protected override IntermediateTextureUsage useIntermediateTextures => IntermediateTextureUsage.NotRequired;
 
 #if UNITY_EDITOR
     [InitializeOnLoadMethod]

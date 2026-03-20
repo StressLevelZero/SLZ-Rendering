@@ -117,7 +117,10 @@ namespace SLZ
         #endif
     }
 
-
+    //half3 CalculateImageBasedSpecularMultiscatter(half3 reflectionDir, half3 reflectance, half roughness, half fdgMultiscatter)
+    //{
+    //    
+    //}
     
 //----------------------------------------------------------------------------
 // FUNCTION POINTERS ---------------------------------------------------------
