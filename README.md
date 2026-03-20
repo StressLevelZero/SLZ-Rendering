@@ -38,3 +38,6 @@ Keep new files quarantined to SLZ folders. This makes it much easier to keep tra
 
 If you want to move a file, use `git mv` to ensure git sees the file as moved rather than as a deletion and a new file. If you want to completely replace a file added by unity, move it to a new filename so git does not think the history of the old file belongs to your new version.
 
+# TODO
+
+Undo commenting out `result.m_ComputeTextBoundingBox = false;` in Packages/com.unity.shadergraph/Editor/Util/IconBadgeWrapper.cs. m_ComputeTextBoundingBox does not yet exist in 6000.3.11f1, presumably the next unity release will have it.
