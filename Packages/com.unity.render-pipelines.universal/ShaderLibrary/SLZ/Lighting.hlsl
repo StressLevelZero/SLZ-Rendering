@@ -2,6 +2,7 @@
 #define SLZ_LIGHTING_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/BRDF.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
 
 namespace SLZ
 {
@@ -23,14 +24,7 @@ namespace SLZ
         float4 shadowCoord;     // 
         half4  shadowMask;
         half3  vertexLighting;  // total lighting calculated in the vertex, which can contain vertex lights and/or the second order spherical harmonics
-
-        static LightMeshData ctor(float3 position, half3 normal, half3 meshNormal, half3 viewDir, half NoV, float2 screenUV, float2 lightmapUV, float2 dynLightmapUV, float4 shadowCoord, half4 shadowMask, half3 vertexLighting)
-        {
-            LightMeshData data = {       position,       normal,       meshNormal,       viewDir,      NoV,        screenUV,        lightmapUV,        dynLightmapUV,        shadowCoord,       shadowMask,       vertexLighting };
-            return data;
-        }
     };
-    #define LightMeshData(p, n, mn, v, NoV, s, l, d, sh, sha, ve)  LightMeshData::ctor(p, n, mn, v, NoV, s, l, d, sh, sha, ve) 
 
 
     struct LightPhysData
@@ -38,19 +32,12 @@ namespace SLZ
         half3 albedo;
         half  perceptualRoughness;
         half  roughness;
-        half3 specularColor;
+        half3 reflectance;
         half3 emission;
         half  occlusion;
         half  alpha;
-        min16int  surfaceType;
-        
-        static LightPhysData ctor(half3 albedo, half perceptualRoughness, half roughness, half3 specular, half3 emission, half occlusion, half alpha, min16int surfaceType)
-        {
-            LightPhysData data = { albedo, perceptualRoughness, roughness, specular, emission, occlusion, alpha, surfaceType };
-            return data;
-        }
+        min16int  surfaceType;  
     };
-    #define LightPhysData(al, pe, ro, sp, em, oc, alp, su )  LightPhysData::ctor(al, pe, ro, sp, em, oc, alp, su) 
 
     struct LightMeshDataAniso : LightMeshData
     {
@@ -130,12 +117,19 @@ namespace SLZ
         #endif
     }
 
+
+    
 //----------------------------------------------------------------------------
 // FUNCTION POINTERS ---------------------------------------------------------
 //----------------------------------------------------------------------------
 
     class SpecularModelKSK
     {
+        // pre-HLSL 2021, the compiler auto casts structs of the same layout. This makes it impossible to do overloads on struct parameters
+        // unless the structs' layouts are different. Solution is to add dummy fields with incompatible types to disambiguate.
+        #if !defined(HLSL_2021)
+        bool disambiguationKSK;
+        #endif
         static half3 CalculateReflectionVector(LightMeshData md, LightPhysData ps)
         {
             return ReflectionDirIso(md.viewDir, md.normal);
@@ -144,12 +138,15 @@ namespace SLZ
         static half3 CalculatePunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            return ggxParams.NoL * SpecBrdfFp16KSK(ggxParams, ps.roughness, ps.specularColor);
+            return ggxParams.NoL * SpecBrdfFp16KSK(ggxParams, ps.roughness, ps.reflectance);
         }
     };
 
     class SpecularModelGGX
     {
+        #if !defined(HLSL_2021) 
+        min16int disambiguationGGX;
+        #endif
         static half3 CalculateReflectionVector(LightMeshData md, LightPhysData ps)
         {
             return ReflectionDirIso(md.viewDir, md.normal);
@@ -157,13 +154,16 @@ namespace SLZ
         static half3 CalculatePunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            return ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.roughness, ps.specularColor);
+            return ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.roughness, ps.reflectance);
         }
     };
 
     
     class SpecularModelAniso
     {
+        #if !defined(HLSL_2021)
+        min16float disambiguationAniso;
+        #endif
         static half3 CalculateReflectionVector(LightMeshDataAniso md, LightPhysDataAniso ps)
         {
             return ReflectionDirAniso(md.viewDir, md.normal, md.tangent, md.bitangent, ps.anisoAspect);
@@ -173,7 +173,7 @@ namespace SLZ
         {
             AnisoGGXParams ggxParams = AnisoGGXParams(md.normal, md.tangent, md.bitangent, md.viewDir, lightDir);
 
-            return ggxParams.NoL * SpecBrdfAnisoFp16(ggxParams, md.NoV, ps.roughnessT, ps.roughnessB, ps.anisoAspect, ps.visLambdaView, ps.specularColor);
+            return ggxParams.NoL * SpecBrdfAnisoFp16(ggxParams, md.NoV, ps.roughnessT, ps.roughnessB, ps.anisoAspect, ps.visLambdaView, ps.reflectance);
         }
     };
 
