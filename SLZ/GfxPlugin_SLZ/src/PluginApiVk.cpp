@@ -599,31 +599,47 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetDeviceProcAddr(VkDevic
 
 static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance)
 {
-    VkApplicationInfo newAppInfo = {};
+    VkApplicationInfo* newAppInfo = const_cast<VkApplicationInfo*>(pCreateInfo->pApplicationInfo);
 
-    newAppInfo.sType = pCreateInfo->pApplicationInfo->sType;
-    newAppInfo.pNext = pCreateInfo->pApplicationInfo->pNext;
-    newAppInfo.pApplicationName = pCreateInfo->pApplicationInfo->pApplicationName;
-    newAppInfo.applicationVersion = pCreateInfo->pApplicationInfo->applicationVersion;
-    newAppInfo.pEngineName = pCreateInfo->pApplicationInfo->pEngineName;
-    newAppInfo.engineVersion = pCreateInfo->pApplicationInfo->engineVersion;
-    newAppInfo.apiVersion = pCreateInfo->pApplicationInfo->apiVersion < VK_API_VERSION_1_2 ? VK_API_VERSION_1_2 : pCreateInfo->pApplicationInfo->apiVersion;
+    //VkApplicationInfo newAppInfo = {};
+    //newAppInfo.sType = pCreateInfo->pApplicationInfo->sType;
+    //newAppInfo.pNext = pCreateInfo->pApplicationInfo->pNext;
+    //newAppInfo.pApplicationName = pCreateInfo->pApplicationInfo->pApplicationName;
+    //newAppInfo.applicationVersion = pCreateInfo->pApplicationInfo->applicationVersion;
+    //newAppInfo.pEngineName = pCreateInfo->pApplicationInfo->pEngineName;
+    //newAppInfo.engineVersion = pCreateInfo->pApplicationInfo->engineVersion;
+    newAppInfo->apiVersion = pCreateInfo->pApplicationInfo->apiVersion < VK_API_VERSION_1_2 ? VK_API_VERSION_1_2 : pCreateInfo->pApplicationInfo->apiVersion;
     
-    uint32_t extCount = 0;
-    
-    VkInstanceCreateInfo newCreateInfo = {};
-    newCreateInfo.sType = pCreateInfo->sType;
-    newCreateInfo.pNext = pCreateInfo->pNext;
-    newCreateInfo.flags = pCreateInfo->flags;
-    newCreateInfo.pApplicationInfo = &newAppInfo;
-    newCreateInfo.enabledLayerCount = pCreateInfo->enabledLayerCount;
-    newCreateInfo.ppEnabledLayerNames = pCreateInfo->ppEnabledLayerNames;
-    newCreateInfo.enabledExtensionCount = pCreateInfo->enabledExtensionCount;
-    newCreateInfo.ppEnabledExtensionNames = pCreateInfo->ppEnabledExtensionNames;
+    PluginState::Log(kUnityLogTypeLog,
+        std::format("Original Vulkan API requested {}.{}.{}.{} ({})\nNew vulkan API: {}.{}.{}.{} ({})",
+            VK_API_VERSION_VARIANT(pCreateInfo->pApplicationInfo->apiVersion),
+            VK_API_VERSION_MAJOR(pCreateInfo->pApplicationInfo->apiVersion),
+            VK_API_VERSION_MINOR(pCreateInfo->pApplicationInfo->apiVersion),
+            VK_API_VERSION_PATCH(pCreateInfo->pApplicationInfo->apiVersion),
+            pCreateInfo->pApplicationInfo->apiVersion,
+            VK_API_VERSION_VARIANT( newAppInfo->apiVersion),
+            VK_API_VERSION_MAJOR(   newAppInfo->apiVersion),
+            VK_API_VERSION_MINOR(   newAppInfo->apiVersion),
+            VK_API_VERSION_PATCH(   newAppInfo->apiVersion),
+            newAppInfo->apiVersion
+            ).c_str(), __FILE__, __LINE__);
+
+    const VkInstanceCreateInfo* newCreateInfo = pCreateInfo;
+    //uint32_t extCount = 0;
+    //
+    //VkInstanceCreateInfo newCreateInfo = {};
+    //newCreateInfo.sType = pCreateInfo->sType;
+    //newCreateInfo.pNext = pCreateInfo->pNext;
+    //newCreateInfo.flags = pCreateInfo->flags;
+    //newCreateInfo.pApplicationInfo = &newAppInfo;
+    //newCreateInfo.enabledLayerCount = pCreateInfo->enabledLayerCount;
+    //newCreateInfo.ppEnabledLayerNames = pCreateInfo->ppEnabledLayerNames;
+    //newCreateInfo.enabledExtensionCount = pCreateInfo->enabledExtensionCount;
+    //newCreateInfo.ppEnabledExtensionNames = pCreateInfo->ppEnabledExtensionNames;
 
     p_vkCreateInstance = (PFN_vkCreateInstance)p_vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
 
-    VkResult result = p_vkCreateInstance(&newCreateInfo, pAllocator, pInstance);
+    VkResult result = p_vkCreateInstance(newCreateInfo, pAllocator, pInstance);
     if (result == VK_SUCCESS)
     {
         PluginVk::vkDevice = VK_NULL_HANDLE;
@@ -641,6 +657,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCrea
 // a preprocessor macro in the vulkan headers. Use more macros to tack that back on later
 #define REQUESTED_VK_EXTS(macro) \
     macro(KHR_fragment_shading_rate) \
+    macro(KHR_fragment_shader_barycentric) \
     //macro(NV_shading_rate_image) \
     //macro(EXT_extended_dynamic_state3) \
     //macro(EXT_blend_operation_advanced)
@@ -730,6 +747,16 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         propertyChainNext = (VkBaseOutStructure*)PluginVk::s_VrsProps;
     }
 
+    VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR physDevBaryProps = {};
+    physDevBaryProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR;
+    physDevBaryProps.pNext = nullptr;
+
+    if (extIsAvailable[RequestedVkExtensions::KHR_fragment_shader_barycentric])
+    {
+        propertyChainNext->pNext = (VkBaseOutStructure*)(&physDevBaryProps);
+        propertyChainNext = (VkBaseOutStructure*)(&physDevBaryProps);
+    }
+
     p_vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
 
     // Get graphics hardware info
@@ -795,6 +822,16 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         featureChainNext = featureChainNext->pNext;
     }
 
+    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR baryFeatures = {};
+    baryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
+    baryFeatures.pNext = nullptr;
+
+    if (extIsAvailable[RequestedVkExtensions::KHR_fragment_shader_barycentric])
+    {
+        featureChainNext->pNext = (VkBaseOutStructure*)(&baryFeatures);
+        featureChainNext = (VkBaseOutStructure*)(&baryFeatures);
+    }
+
 
     VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT advBlendOps = {};
     advBlendOps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT;
@@ -828,9 +865,15 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
        
         PluginVk::s_SupportsBlendOpAdv = false;
     }
-    
+
+    PluginState::Log(kUnityLogTypeLog, std::format("Barycentrics Extension Available {}", baryFeatures.fragmentShaderBarycentric).c_str(), "", 0);
+
+    //if (extIsAvailable[RequestedVkExtensions::KHR_fragment_shader_barycentric])
+    //{
+    //}
     
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR* defaultFeatures = nullptr;
+    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR* defaultBaryFeatures = nullptr;
     
     void* pNext = (void*)newCreateInfo->pNext;
     void* previousStruct = (void*)&newCreateInfo;
@@ -847,6 +890,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
     }
     */
     bool hasFragmentDensityMap = false;
+    bool hasBaryCentrics = false;
     // Scan the original extension features 
     while (pNext)
     {
@@ -880,6 +924,11 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
             }
         }
 
+        if (pNextType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR)
+        {
+            defaultBaryFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)pNext;
+        }
+
         pNext = ((VkBaseOutStructure*)pNext)->pNext;
     }
 
@@ -898,6 +947,12 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         ((VkBaseOutStructure*)previousStruct)->pNext = (VkBaseOutStructure*)&vrsFeatures;
         previousStruct = &vrsFeatures;
         defaultFeatures = &vrsFeatures;
+    }
+
+    if (!defaultBaryFeatures && extIsAvailable[RequestedVkExtensions::KHR_fragment_shader_barycentric])
+    {
+        ((VkBaseOutStructure*)previousStruct)->pNext = (VkBaseOutStructure*)&baryFeatures;
+        previousStruct = &baryFeatures;
     }
 
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR* usedFragRateFeatures = defaultFeatures != nullptr ? defaultFeatures : &vrsFeatures;
@@ -998,13 +1053,19 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(
                 const VkBaseOutStructure* next = (const VkBaseOutStructure*)&pCreateInfos[i];
                 while (next->pNext != NULL)
                 {
+                    next = (const VkBaseOutStructure*)(next->pNext);
                     //Make sure that somebody else didn't already add a fragment shading rate struct to the chain
                     if (next->sType == VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR)
                     {
+
                         otherRate = true;
+
+                        VkPipelineFragmentShadingRateStateCreateInfoKHR* editRate = (VkPipelineFragmentShadingRateStateCreateInfoKHR*)const_cast<VkBaseOutStructure*>(next);
+                        editRate->fragmentSize = vrsStructs[i].fragmentSize;
+
                         break;
                     }
-                    next = (const VkBaseOutStructure*)(next->pNext);
+                    
                 }
 
                 if (!otherRate)

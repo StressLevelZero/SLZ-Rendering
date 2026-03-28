@@ -11,6 +11,22 @@ namespace SLZ
 // STRUCTS -------------------------------------------------------------------
 //----------------------------------------------------------------------------
 
+#if defined(UNITY_COMPILER_DXC)
+    enum SurfaceType : min16int
+    {
+        Opaque      = 0,
+        Transparent = 1,
+        Fade        = 2
+    };
+#else
+    class SurfaceType
+    {
+        static const min16int Opaque      = 0;
+        static const min16int Transparent = 1;
+        static const min16int Fade        = 2;
+    };
+#endif
+
     struct LightMeshData
     {
         float3 position;        // worldspace position of the fragment
@@ -30,13 +46,29 @@ namespace SLZ
     struct LightPhysData
     {
         half3 albedo;
-        half  perceptualRoughness;
         half  roughness;
-        half3 reflectance;
+        half3 normalSpecReflectance;
         half3 emission;
         half  occlusion;
         half  alpha;
-        min16int  surfaceType;  
+
+        // Surface type 
+        min16int  surfaceType;
+
+        // Reduce register use by not storing the perceptual roughness 
+        half PerceptualRoughness()
+        {
+            return sqrt(roughness);
+        }
+
+        // Support metallic only version that uses a scalar times the albedo rather than 
+        // using two more registers to store the specular reflectance vector? This has
+        // to be used at every stage, might be better to incur the cost of doing several
+        // multiplies if it gets us under a register usage threshold
+        half3 NormalSpecReflectance()
+        {
+            return normalSpecReflectance;
+        }
     };
 
     struct LightMeshDataAniso : LightMeshData
@@ -117,10 +149,13 @@ namespace SLZ
         #endif
     }
 
-    //half3 CalculateImageBasedSpecularMultiscatter(half3 reflectionDir, half3 reflectance, half roughness, half fdgMultiscatter)
-    //{
-    //    
-    //}
+    
+    half3 CalculateImageBasedSpecularNonPhys(half3 reflectionDir, float3 position, half roughness, float2 screenUV, half3 normalSpecReflectance)
+    {
+        half3 rawReflection = GlossyEnvironmentReflection(reflectionDir, position, sqrt(max(HALF_MIN, roughness)), 1.0f, screenUV);
+        
+        return rawReflection;
+    }
     
 //----------------------------------------------------------------------------
 // FUNCTION POINTERS ---------------------------------------------------------
@@ -141,7 +176,12 @@ namespace SLZ
         static half3 CalculatePunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            return ggxParams.NoL * SpecBrdfFp16KSK(ggxParams, ps.roughness, ps.reflectance);
+            return ggxParams.NoL * SpecBrdfFp16KSK(ggxParams, ps.roughness, ps.NormalSpecReflectance());
+        }
+
+        static half3 CalculateIBLSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir)
+        {
+            return CalculateImageBasedSpecularNonPhys(reflectionDir, md.position, ps.roughness, md.screenUV, ps.NormalSpecReflectance());
         }
     };
 
@@ -157,7 +197,11 @@ namespace SLZ
         static half3 CalculatePunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            return ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.roughness, ps.reflectance);
+            return ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.roughness, ps.NormalSpecReflectance());
+        }
+        static half3 CalculateIBLSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir)
+        {
+            return CalculateImageBasedSpecularNonPhys(reflectionDir, md.position, ps.roughness, md.screenUV, ps.NormalSpecReflectance());
         }
     };
 
@@ -176,7 +220,12 @@ namespace SLZ
         {
             AnisoGGXParams ggxParams = AnisoGGXParams(md.normal, md.tangent, md.bitangent, md.viewDir, lightDir);
 
-            return ggxParams.NoL * SpecBrdfAnisoFp16(ggxParams, md.NoV, ps.roughnessT, ps.roughnessB, ps.anisoAspect, ps.visLambdaView, ps.reflectance);
+            return ggxParams.NoL * SpecBrdfAnisoFp16(ggxParams, md.NoV, ps.roughnessT, ps.roughnessB, ps.anisoAspect, ps.visLambdaView, ps.NormalSpecReflectance());
+        }
+
+        static half3 CalculateIBLSpecular(LightMeshDataAniso md, LightPhysDataAniso ps, half3 reflectionDir)
+        {
+            return CalculateImageBasedSpecularNonPhys(reflectionDir, md.position, ps.roughness, md.screenUV, ps.NormalSpecReflectance());
         }
     };
 

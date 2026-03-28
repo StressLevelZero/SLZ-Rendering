@@ -10,13 +10,14 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
 
     // handle alpha premultiplication for transparent surfaces. diffuse lighting is multiplied by alpha, but specular is unaffected.
     // Instead, reflectivity reduces transmission of light.  
-    if (physData.surfaceType == min16int(1))
+    if (physData.surfaceType == SurfaceType::Transparent)
     {
         physData.albedo *= physData.alpha;
         physData.emission *= physData.alpha;
 
         // increase the alpha to 1 as the specular reflectance goes to 1
-        half monoReflectance = max(physData.reflectance.r, max(physData.reflectance.g, physData.reflectance.b));
+        half3 normRefl = physData.NormalSpecReflectance();
+        half monoReflectance = max(normRefl, max(normRefl, normRefl));
         // inaccurate pow4 fresnel, but good enough
         half fresnelTerm = (half(1.0h) - saturate(meshData.NoV));
         fresnelTerm *= fresnelTerm;
@@ -26,8 +27,9 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
 
     half3 diffuse = meshData.vertexLighting * physData.albedo;
 
+    // TODO: do we bake in the reflectionDir calculation into CalculateIBLSpecular, or separate it so other functions can access it?
     half3 reflectionDir = SPECULAR_MODEL::CalculateReflectionVector(meshData, physData);
-    half3 specular = GlossyEnvironmentReflection(reflectionDir, meshData.position, physData.perceptualRoughness, 1.0f, meshData.screenUV);
+    half3 specular = SPECULAR_MODEL::CalculateIBLSpecular(meshData, physData, reflectionDir);
 
     //specular += SPECULAR_MODEL::CalculatePunctualSpecular(meshData, physData, half3(0, 1, 0));
 
