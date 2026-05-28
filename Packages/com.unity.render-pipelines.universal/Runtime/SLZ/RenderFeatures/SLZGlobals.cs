@@ -41,12 +41,13 @@ public class SLZGlobals : ScriptableRendererFeature
     [SerializeField] SLZGlobalsSettings settings;
     SLZGlobalsPass m_Pass;
 
-   
+    SlzRpRuntimeResources slzRpResources;
 
     /// <inheritdoc/>
     public override void Create()
     {
-        m_Pass = new SLZGlobalsPass(settings);
+        slzRpResources = GraphicsSettings.GetRenderPipelineSettings<SlzRpRuntimeResources>();
+        m_Pass = new SLZGlobalsPass(settings, slzRpResources);
         
         // Configures where the render pass should be injected.
         m_Pass.renderPassEvent = RenderPassEvent.BeforeRenderingPrePasses;
@@ -59,7 +60,7 @@ public class SLZGlobals : ScriptableRendererFeature
         // Use this option for passes that do not support rendering directly to the backbuffer.
         // Only uncomment it if necessary, it will have a performance impact, especially on mobiles and other TBDR GPUs where it will break render passes.
         //m_ScriptablePass.requiresIntermediateTexture = true;
-
+        
     }
 
     // Here you can inject one or multiple render passes in the renderer.
@@ -92,6 +93,7 @@ public class SLZGlobals : ScriptableRendererFeature
     class SLZGlobalsPass : ScriptableRenderPass, IDisposable
     {
         readonly SLZGlobalsSettings settings;
+        readonly SlzRpRuntimeResources slzRpResources;
         public ComputeBuffer blueNoiseConstants;
 
         [StructLayout(LayoutKind.Explicit, Size = 32)]
@@ -107,10 +109,10 @@ public class SLZGlobals : ScriptableRendererFeature
         public NativeArray<BlueNoiseConstants> constArray;
 
 
-        public SLZGlobalsPass(SLZGlobalsSettings settings)
+        public SLZGlobalsPass(SLZGlobalsSettings settings, SlzRpRuntimeResources slzRpResources)
         {
             this.settings = settings;
-
+            this.slzRpResources = slzRpResources;
             blueNoiseConstants = new ComputeBuffer(1, Marshal.SizeOf<BlueNoiseConstants>(), ComputeBufferType.Constant);
             //Debug.Log($"blueNoiseConstants stride: {blueNoiseConstants.stride}");
             constArray = new NativeArray<BlueNoiseConstants>(1,Allocator.Persistent, NativeArrayOptions.ClearMemory);
@@ -157,6 +159,7 @@ public class SLZGlobals : ScriptableRendererFeature
             public TextureHandle m_BlueNoiseR_32x32x16;
             public TextureHandle m_BlueNoiseR_64x64x64;
             public TextureHandle m_BlueNoiseRGBA_64x64x64;
+            public TextureHandle m_FgdGgxLut;
             public ComputeBuffer blueNoiseConstantBuffer;
             public NativeArray<BlueNoiseConstants> constArray;
             public float4 blueNoiseDimFrame;
@@ -179,6 +182,7 @@ public class SLZGlobals : ScriptableRendererFeature
             context.cmd.SetGlobalConstantBuffer(data.blueNoiseConstantBuffer, id_BlueNoiseDimBuffer, 0, data.blueNoiseConstantBuffer.count * data.blueNoiseConstantBuffer.stride);
             
             context.cmd.SetGlobalTexture("_BlueNoiseRGBA", data.m_BlueNoiseRGBA_64x64x64);
+            context.cmd.SetGlobalTexture("_FgdGgx", data.m_FgdGgxLut);
         }
 
         // RecordRenderGraph is where the RenderGraph handle can be accessed, through which render passes can be added to the graph.
@@ -205,6 +209,8 @@ public class SLZGlobals : ScriptableRendererFeature
                 builder.UseTexture(passData.m_BlueNoiseR_64x64x64, AccessFlags.Read);
                 passData.m_BlueNoiseRGBA_64x64x64 = renderGraph.ImportTexture(RTHandles.Alloc(settings.m_BlueNoiseRGBA_64x64x64));
                 builder.UseTexture(passData.m_BlueNoiseRGBA_64x64x64, AccessFlags.Read);
+                passData.m_FgdGgxLut = renderGraph.ImportTexture(RTHandles.Alloc(slzRpResources.fdgGgxLut));
+                builder.UseTexture(passData.m_FgdGgxLut, AccessFlags.Read);
 
                 passData.blueNoiseConstantBuffer = this.blueNoiseConstants;
                 passData.constArray = this.constArray;

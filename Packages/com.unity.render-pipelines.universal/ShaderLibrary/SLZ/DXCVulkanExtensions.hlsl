@@ -80,6 +80,67 @@ static uint2 s_FragSizeExt = uint2(0, 0);
 	#define SLZ_SETUP_FRAG_SIZE(screenCoords) s_FragSizeExt = FallbackGetFragSize(screenCoords);
 #endif
 
+// Cursed hack to use barycentrics with vulkan and DXC. Currently, DXC has an issue (imposed by the D3D12 spec) that
+// requires barycentric interface variables to be declared as nointerpolation. During SPIR-V generation, the compiler 
+// attaches both the PerVertexKHR and Flat (no interpolation) decorates to the variable despite PerVertexKHR already implying 
+// no interpolation. It seems the NVidia driver takes the Flat decorate as a hint that it only needs to populate the data of 
+// the first vertex in the triangle, and trying to get the data of the other two returns 0 or the next attribute in the input 
+// layout.
+// 
+// Fix is to declare all interface variables like they would be in GLSL as arrays with the PerVertexKHR attribute inlined. 
+// The arrays in GLSL have no defined size, which is impossible in HLSL. Defining them as 1 long seems to work just fine
+// as there are no bounds checks. Trying to make them 3 long causes alignment issues. Additionally, the attributes must
+// be DIRECTLY declared as inputs to the fragment program rather than inside a struct. DXC breaks somehow when they
+// are part of a struct. 
+//
+// Cleanest way to handle this I've found is to use some C macro soup. Declare the contents of the vertex output/fragment
+// input interface as a macro with inputs for the attribute, array specifier, and line separator:
+// ```
+// #define COMMA ,
+// #define SEMICOLON ;
+// #define INTERPOLATORS(atr, arr, sep) \
+//     float4 vertex : SV_POSITION    sep \
+//     atr float2 uv  arr : TEXCOORD0 sep \
+//     atr float2 uv1 arr : TEXCOORD1 sep \
+//     atr float2 uv2 arr : TEXCOORD2 sep \
+//     UnityMacroInterface macros 
+// ```
+// Notice that we have to nest the unity instancing/stereo macros in a struct as they contain semicolons.
+// Declare the vertex program output struct with no input for the attribute and array, and the SEMICOLON macro for the separator:
+// ```
+// struct v2f
+// {
+//     INTERPOLATORS( , , SEMICOLON);
+// };
+// ```
+// And declare the fragment program like this:
+// ```
+// float4 frag(
+//     INTERPOLATORS(PER_VERTEX_ATTRIBUTE, PER_VERTEX_ARRAY, COMMA)
+//     , BUILTIN_BARY_COORD_KHR float3 baryWeights : BARYCENTRIC_SEMANTIC
+//     ) : SV_Target
+// {
+//     UNITY_SETUP_INSTANCE_ID(macros);
+//     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(macros);
+//     RequestVkBarycentrics(); // Adds the SPV_KHR_fragment_shader_barycentric extension and capability to this program
+//     float2 example = GET_ATTRIBUTE_AT_VERTEX(uv, 1);
+//     ...
+// ```
+// This uses several macros defined below to resolve to either the proper HLSL syntax or on Vulkan the inline SPIR-V
+// with the interface variables as 1 long arrays. Additionally, do not require barycentrics on vulkan:
+// ```
+// #if !defined(SHADER_API_VULKAN)
+// #pragma require Barycentrics
+// #endif
+// ```
+// Unity assumes barycentrics do not work on vulkan due to an even older DXC bug and will exclude the shader if that is required.
+
+struct UnityMacroInterface
+{
+    UNITY_VERTEX_INPUT_INSTANCE_ID
+    UNITY_VERTEX_OUTPUT_STEREO
+};
+
 #if defined(INLINE_SPIRV)
     #define PER_VERTEX_ATTRIBUTE            [[vk::ext_decorate(5285 /*PerVertexKHR*/)]]
     #define GET_ATTRIBUTE_AT_VERTEX(a, i)   a[i]

@@ -2,6 +2,7 @@
 #define SLZ_LIGHTING_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/BRDF.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/FGD.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
 
 namespace SLZ
@@ -47,7 +48,7 @@ namespace SLZ
     {
         half3 albedo;
         half  roughness;
-        half3 normalSpecReflectance;
+        half3 specularF0; // Specular reflectance at normal incidence
         half3 emission;
         half  occlusion;
         half  alpha;
@@ -61,13 +62,18 @@ namespace SLZ
             return sqrt(roughness);
         }
 
-        // Support metallic only version that uses a scalar times the albedo rather than 
+        // Switch to metallic only version that uses a scalar times the albedo rather than 
         // using two more registers to store the specular reflectance vector? This has
         // to be used at every stage, might be better to incur the cost of doing several
         // multiplies if it gets us under a register usage threshold
-        half3 NormalSpecReflectance()
+        half3 SpecularF0()
         {
-            return normalSpecReflectance;
+            return specularF0;
+        }
+
+        half3 SpecularF90()
+        {
+            return half3(1,1,1);
         }
     };
 
@@ -138,24 +144,37 @@ namespace SLZ
     }
 
 
-
-    
-    half3 ReflectionDir(const LightMeshData mData, const LightPhysDataAniso pData)
-    {
-        #if defined(SLZ_ANISOTROPIC_SPECULAR)
-            return ReflectionDirAniso(mData.viewDir, mData.normal, mData.tangent, mData.bitangent, pData.anisoAspect);
-        #else
-            return ReflectionDirIso(mData.viewDir, mData.normal);
-        #endif
-    }
-
-    
-    half3 CalculateImageBasedSpecularNonPhys(half3 reflectionDir, float3 position, half roughness, float2 screenUV, half3 normalSpecReflectance)
+    /**
+     * Image based specular using the multiscatter fdg/dfg lookup table. This requires reflection probes to have custom mips 
+     * containing convolutions calculated according to the multiscatter LD formula. See IntegrateGGXAndDisneyDiffuseFGD in
+     * Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl. 
+     * The default built-in pipeline gaussian blurred mips will not give a correct result!!!
+     *
+     * This is using the SRP Core/HDRP use the multiscatter dfg formula also used by the Google Filament renderer 
+     * (https://google.github.io/filament/Filament.md.html#listing_multiscatteriblevaluation) 
+     * I have no clue what the actual source for this formula is, unity erroneously references the non-multiscatter formula used by 
+     * "Moving Frostbite to PBR" and the Filament doc doesn't properly cite its sources (maybe Filament is the primary source?). 
+     */
+    half3 CalculateImageBasedSpecularMultiscatterFDG(half3 reflectionDir, float3 position, half roughness, float2 screenUV, half NoV, half3 specularF0, half2 fdg)
     {
         half3 rawReflection = GlossyEnvironmentReflection(reflectionDir, position, sqrt(max(HALF_MIN, roughness)), 1.0f, screenUV);
-        
-        return rawReflection;
+        return lerp(fdg.xxx, fdg.yyy, specularF0) * rawReflection;
     }
+
+    /** 
+     * Image based specular using the built-in pipeline's non-physically based surface reduction fudge factor + pow4 fresnel
+     */
+    half3 CalculateImageBasedSpecularNonPhys(half3 reflectionDir, float3 position, half roughness, float2 screenUV, half NoV, half3 specularF0)
+    {
+        half3 rawReflection = GlossyEnvironmentReflection(reflectionDir, position, sqrt(max(HALF_MIN, roughness)), 1.0f, screenUV);
+        half unitySurfaceReduction = half(1.0) / (roughness * roughness + half(1.0));
+        half fresnel = half(1.0) - saturate(NoV);
+        fresnel *= fresnel;
+        fresnel *= fresnel;
+        return rawReflection * unitySurfaceReduction * lerp(specularF0, half3(1,1,1), fresnel);
+    }
+
+
     
 //----------------------------------------------------------------------------
 // FUNCTION POINTERS ---------------------------------------------------------
@@ -176,12 +195,12 @@ namespace SLZ
         static half3 CalculatePunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            return ggxParams.NoL * SpecBrdfFp16KSK(ggxParams, ps.roughness, ps.NormalSpecReflectance());
+            return ggxParams.NoL * SpecBrdfFp16KSK(ggxParams, ps.roughness, ps.SpecularF0());
         }
 
-        static half3 CalculateIBLSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir)
+        static half3 CalculateIBLSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir, half2 fgd)
         {
-            return CalculateImageBasedSpecularNonPhys(reflectionDir, md.position, ps.roughness, md.screenUV, ps.NormalSpecReflectance());
+            return CalculateImageBasedSpecularMultiscatterFDG(reflectionDir, md.position, ps.roughness, md.screenUV, md.NoV, ps.SpecularF0(), fgd);
         }
     };
 
@@ -197,11 +216,11 @@ namespace SLZ
         static half3 CalculatePunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            return ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.roughness, ps.NormalSpecReflectance());
+            return ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.roughness, ps.SpecularF0());
         }
-        static half3 CalculateIBLSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir)
+        static half3 CalculateIBLSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir, half2 fgd)
         {
-            return CalculateImageBasedSpecularNonPhys(reflectionDir, md.position, ps.roughness, md.screenUV, ps.NormalSpecReflectance());
+            return CalculateImageBasedSpecularMultiscatterFDG(reflectionDir, md.position, ps.roughness, md.screenUV, md.NoV, ps.SpecularF0(), fgd);
         }
     };
 
@@ -220,12 +239,12 @@ namespace SLZ
         {
             AnisoGGXParams ggxParams = AnisoGGXParams(md.normal, md.tangent, md.bitangent, md.viewDir, lightDir);
 
-            return ggxParams.NoL * SpecBrdfAnisoFp16(ggxParams, md.NoV, ps.roughnessT, ps.roughnessB, ps.anisoAspect, ps.visLambdaView, ps.NormalSpecReflectance());
+            return ggxParams.NoL * SpecBrdfAnisoFp16(ggxParams, md.NoV, ps.roughnessT, ps.roughnessB, ps.anisoAspect, ps.visLambdaView, ps.SpecularF0());
         }
 
-        static half3 CalculateIBLSpecular(LightMeshDataAniso md, LightPhysDataAniso ps, half3 reflectionDir)
+        static half3 CalculateIBLSpecular(LightMeshDataAniso md, LightPhysDataAniso ps, half3 reflectionDir, half2 fgd)
         {
-            return CalculateImageBasedSpecularNonPhys(reflectionDir, md.position, ps.roughness, md.screenUV, ps.NormalSpecReflectance());
+            return CalculateImageBasedSpecularMultiscatterFDG(reflectionDir, md.position, ps.roughness, md.screenUV, md.NoV, ps.SpecularF0(), fgd);
         }
     };
 
