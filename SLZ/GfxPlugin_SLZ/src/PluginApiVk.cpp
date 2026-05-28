@@ -878,17 +878,6 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
     void* pNext = (void*)newCreateInfo->pNext;
     void* previousStruct = (void*)&newCreateInfo;
 
-    /*
-    while (!defaultFeatures && pNext)
-    {
-        previousStruct = pNext;
-        if (((VkBaseOutStructure*)pNext)->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR)
-        {
-            defaultFeatures = (VkPhysicalDeviceFragmentShadingRateFeaturesKHR*)pNext;
-        }
-        pNext = ((VkBaseOutStructure*)pNext)->pNext;
-    }
-    */
     bool hasFragmentDensityMap = false;
     bool hasBaryCentrics = false;
     // Scan the original extension features 
@@ -1132,6 +1121,20 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSampler(VkDevice device, cons
     }
 
     return p_vkCreateSampler(device, eCreateInfo, pAllocator, pSampler);
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(
+    VkDevice device,
+    const VkRenderPassCreateInfo2* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkRenderPass* pRenderPass
+    )
+{
+    bool isVR = pCreateInfo->pSubpasses[0].viewMask == 3;
+    if (isVR)
+    {
+
+    }
 }
 
 
