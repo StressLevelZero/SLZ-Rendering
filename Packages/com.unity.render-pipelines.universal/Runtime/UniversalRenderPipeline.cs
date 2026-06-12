@@ -20,6 +20,7 @@ using UnityEngine.Windowing;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     /// <summary>
     /// The main class for the Universal Render Pipeline (URP).
     /// </summary>
@@ -1030,7 +1031,7 @@ namespace UnityEngine.Rendering.Universal
 
                 // Sync the FOV on the camera to match the projection from the XR device
                 if (!cameraData.camera.usePhysicalProperties && !XRGraphicsAutomatedTests.enabled)
-                    cameraData.camera.fieldOfView = Mathf.Rad2Deg * Mathf.Atan(1.0f / cullingParams.stereoProjectionMatrix.m11) * 2.0f;
+                    cameraData.camera.fieldOfView = Mathf.Rad2Deg * System.MathF.Atan(1.0f / cullingParams.stereoProjectionMatrix.m11) * 2.0f;
 
                 if (cameraData.xr.isFirstCameraPass)
                 {
@@ -2023,7 +2024,7 @@ namespace UnityEngine.Rendering.Universal
             // Discard variations lesser than kRenderScaleThreshold.
             // Scale is only enabled for gameview.
             const float kRenderScaleThreshold = 0.05f;
-            bool disableRenderScale = (Mathf.Abs(1.0f - settings.renderScale) < kRenderScaleThreshold) || isScenePreviewOrReflectionCamera || !supportedRenderingFeatures.upscaling;
+            bool disableRenderScale = (System.MathF.Abs(1.0f - settings.renderScale) < kRenderScaleThreshold) || isScenePreviewOrReflectionCamera || !supportedRenderingFeatures.upscaling;
             cameraData.renderScale = disableRenderScale? 1.0f : settings.renderScale;
 
 #if ENABLE_UPSCALER_FRAMEWORK

@@ -4,6 +4,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     // Ground Truth Ambient Occlusion (GTAO) Pass - Handles GTAO mode with compute shader and raster-fragment fallback.
     internal class GTAOPass : ScriptableRenderPass, IDisposable
     {

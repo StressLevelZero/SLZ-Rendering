@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices; // AggressiveInlining
 
 namespace UnityEngine.Rendering.Universal
 {
+
     internal sealed class DepthOfFieldBokehPostProcessPass : PostProcessPass
     {
         public const string k_TargetName = "CameraColorDepthOfFieldBokeh";
@@ -232,17 +233,17 @@ namespace UnityEngine.Rendering.Universal
 
                     // Transform to rotated N-Gon
                     // Adapted from "CryEngine 3 Graphics Gems" [Sousa13]
-                    float nt = Mathf.Cos(PI / bladeCountf);
-                    float dt = Mathf.Cos(phi - (TWO_PI / bladeCountf) * Mathf.Floor((bladeCountf * phi + Mathf.PI) / TWO_PI));
-                    float r = radius * Mathf.Pow(nt / dt, curvature);
-                    float u = r * Mathf.Cos(phi - rotation);
-                    float v = r * Mathf.Sin(phi - rotation);
+                    float nt = System.MathF.Cos(PI / bladeCountf);
+                    float dt = System.MathF.Cos(phi - (TWO_PI / bladeCountf) * Mathf.Floor((bladeCountf * phi + Mathf.PI) / TWO_PI));
+                    float r = radius * System.MathF.Pow(nt / dt, curvature);
+                    float u = r * System.MathF.Cos(phi - rotation);
+                    float v = r * System.MathF.Sin(phi - rotation);
 
                     float uRadius = u * maxRadius;
                     float vRadius = v * maxRadius;
                     float uRadiusPowTwo = uRadius * uRadius;
                     float vRadiusPowTwo = vRadius * vRadius;
-                    float kernelLength = Mathf.Sqrt((uRadiusPowTwo + vRadiusPowTwo));
+                    float kernelLength = System.MathF.Sqrt((uRadiusPowTwo + vRadiusPowTwo));
                     float uRCP = uRadius * rcpAspect;
 
                     bokehKernel[idx] = new Vector4(uRadius, vRadius, kernelLength, uRCP);
