@@ -949,8 +949,8 @@ namespace UnityEngine.Rendering.Universal.Internal
                 Light light = vl.light;
 
                 float alpha = Mathf.Deg2Rad * vl.spotAngle * 0.5f;
-                float cosAlpha = Mathf.Cos(alpha);
-                float sinAlpha = Mathf.Sin(alpha);
+                float cosAlpha = System.MathF.Cos(alpha);
+                float sinAlpha = System.MathF.Sin(alpha);
                 // Artificially inflate the geometric shape to fit the analytic spot shape.
                 // The tighter the spot shape, the lesser inflation is needed.
                 float guard = Mathf.Lerp(1.0f, kStencilShapeGuard, sinAlpha);

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices; // AggressiveInlining
 
 namespace UnityEngine.Rendering.Universal
 {
+
     internal sealed class PaniniProjectionPostProcessPass : PostProcessPass
     {
         public const string k_TargetName = "CameraColorPaniniProjection";
@@ -74,7 +75,7 @@ namespace UnityEngine.Rendering.Universal
                 builder.UseTexture(sourceTexture, AccessFlags.Read);
                 passData.material = m_Material;
                 passData.paniniParams = new Vector4(viewExtents.x, viewExtents.y, paniniD, paniniS);
-                passData.isPaniniGeneric = 1f - Mathf.Abs(paniniD) > float.Epsilon;
+                passData.isPaniniGeneric = 1f - System.MathF.Abs(paniniD) > float.Epsilon;
 
                 builder.SetRenderFunc(static (PaniniProjectionPassData data, RasterGraphContext context) =>
                 {
@@ -98,7 +99,7 @@ namespace UnityEngine.Rendering.Universal
             float fovY = fieldOfView * Mathf.Deg2Rad;
             float aspect = width / (float)height;
 
-            float viewExtY = Mathf.Tan(0.5f * fovY);
+            float viewExtY = System.MathF.Tan(0.5f * fovY);
             float viewExtX = aspect * viewExtY;
 
             return new Vector2(viewExtX, viewExtY);
@@ -132,7 +133,7 @@ namespace UnityEngine.Rendering.Universal
             float viewDist = 1f + d;
 
             var projPos = CalcViewExtents(fieldOfView, width, height);
-            var projHyp = Mathf.Sqrt(projPos.x * projPos.x + 1f);
+            var projHyp = System.MathF.Sqrt(projPos.x * projPos.x + 1f);
 
             float cylDistMinusD = 1f / projHyp;
             float cylDist = cylDistMinusD + d;

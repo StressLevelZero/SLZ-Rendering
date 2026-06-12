@@ -435,7 +435,7 @@ namespace UnityEngine.Rendering.Universal
                         const float k_SSRBlurReferenceScreenHalfWidth = 1.0f;
                         const float k_BlurrinessBase = 100f;
                         float screenHalfWidthAtOne = 0.5f * Math.Abs(left.x / left.z - right.x / right.z);
-                        float blurriness = k_BlurrinessBase * Mathf.Pow(2f, ssrData.roughnessScale) * k_SSRBlurReferenceScreenHalfWidth / Math.Max(0.01f, screenHalfWidthAtOne);
+                        float blurriness = k_BlurrinessBase * System.MathF.Pow(2f, ssrData.roughnessScale) * k_SSRBlurReferenceScreenHalfWidth / Math.Max(0.01f, screenHalfWidthAtOne);
                         cmd.SetGlobalVector(ShaderConstants._ReflectionParam2, new Vector4(blurriness, ssrTextureMipOffset, ssrTextureLastValidMipIndex, 0));
                     });
                 }

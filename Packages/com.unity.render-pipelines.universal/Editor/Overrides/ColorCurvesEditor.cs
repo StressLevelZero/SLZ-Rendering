@@ -320,7 +320,7 @@ namespace UnityEditor.Rendering.Universal
 
                     // Grid setup
                     Handles.color = new Color(1f, 1f, 1f, 0.05f);
-                    int hLines = (int)Mathf.Sqrt(innerRect.width);
+                    int hLines = (int)System.MathF.Sqrt(innerRect.width);
                     int vLines = (int)(hLines / (innerRect.width / innerRect.height));
 
                     // Vertical grid

@@ -315,7 +315,7 @@ namespace UnityEditor.Rendering.Universal
                 {
                     // Duplicating logic from UniversalRenderPipeline.InitializeStackedCameraData
                     const float kRenderScaleThreshold = 0.05f;
-                    bool canRequireIntermediateTexture = Mathf.Abs(1.0f - p.floatValue) >= kRenderScaleThreshold;
+                    bool canRequireIntermediateTexture = System.MathF.Abs(1.0f - p.floatValue) >= kRenderScaleThreshold;
                     if (!canRequireIntermediateTexture)
                         return false;
                     

@@ -5,6 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     // Ground Truth Ambient Occlusion (GTAO) Pass - Handles GTAO mode with compute shader and raster-fragment fallback.
     internal class GTAOPass : ScriptableRenderPass, IDisposable
     {
@@ -266,7 +267,7 @@ namespace UnityEngine.Rendering.Universal
                 : runningRes.y * invHalfTanFOV * 0.25f;
 
             float scaleFactor = (runningRes.x * runningRes.y) / k_GTAOMaxRadiusReferencePixelCount;
-            float radInPixels = Mathf.Max(16, settings.GTAOMaxRadiusPixels * Mathf.Sqrt(scaleFactor));
+            float radInPixels = Mathf.Max(16, settings.GTAOMaxRadiusPixels * System.MathF.Sqrt(scaleFactor));
 
             ssaoParams2 = new Vector4(radInPixels, 1.0f / (radius * radius), fovCorrection, 0.0f);
             depthToViewParams = new Vector4(

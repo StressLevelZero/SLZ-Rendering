@@ -5,6 +5,7 @@ using UnityEngine.Rendering.Universal.Internal;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     /// <summary>
     /// Rendering modes for Universal renderer.
     /// </summary>
@@ -860,8 +861,8 @@ namespace UnityEngine.Rendering.Universal
             const float epsilon = 0.0001f;
 
             bool dynamicResEnabled = cameraData.camera.allowDynamicResolution;
-            bool scaledWidthActive = Mathf.Abs(ScalableBufferManager.widthScaleFactor - 1.0f) > epsilon;
-            bool scaledHeightActive = Mathf.Abs(ScalableBufferManager.heightScaleFactor - 1.0f) > epsilon;
+            bool scaledWidthActive = System.MathF.Abs(ScalableBufferManager.widthScaleFactor - 1.0f) > epsilon;
+            bool scaledHeightActive = System.MathF.Abs(ScalableBufferManager.heightScaleFactor - 1.0f) > epsilon;
 
             return dynamicResEnabled && (scaledWidthActive || scaledHeightActive);
         }

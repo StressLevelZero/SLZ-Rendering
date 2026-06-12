@@ -5,6 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal.Internal
 {
+
     /// <summary>
     /// Renders a shadow map atlas for additional shadow-casting Lights.
     /// </summary>
@@ -145,7 +146,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             float frustumAngle = frustumAngleInDegrees * Mathf.Deg2Rad;
             float halfFrustumAngle = frustumAngle / 2;
-            float tanHalfFrustumAngle = Mathf.Tan(halfFrustumAngle);
+            float tanHalfFrustumAngle = System.MathF.Tan(halfFrustumAngle);
 
             float halfSliceResolution = sliceResolutionInTexels / 2;
             float halfGuardBand = guardBandSizeInTexels / 2;
@@ -153,7 +154,7 @@ namespace UnityEngine.Rendering.Universal.Internal
 
             float tanHalfGuardAnglePlusHalfFrustumAngle = tanHalfFrustumAngle * factorBetweenAngleTangents;
 
-            float halfGuardAnglePlusHalfFrustumAngle = Mathf.Atan(tanHalfGuardAnglePlusHalfFrustumAngle);
+            float halfGuardAnglePlusHalfFrustumAngle = System.MathF.Atan(tanHalfGuardAnglePlusHalfFrustumAngle);
             float halfGuardAngleInRadian = halfGuardAnglePlusHalfFrustumAngle - halfFrustumAngle;
 
             float guardAngleInRadian = 2 * halfGuardAngleInRadian;
