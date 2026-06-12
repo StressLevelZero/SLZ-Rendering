@@ -65,8 +65,8 @@ namespace UnityEditor.Rendering.Universal
             // Thumb
             var thumbPos = Vector2.zero;
             float theta = hsv.x * (Mathf.PI * 2f);
-            thumbPos.x = Mathf.Cos(theta + (Mathf.PI / 2f));
-            thumbPos.y = Mathf.Sin(theta - (Mathf.PI / 2f));
+            thumbPos.x = System.MathF.Cos(theta + (Mathf.PI / 2f));
+            thumbPos.y = System.MathF.Sin(theta - (Mathf.PI / 2f));
             thumbPos *= hsv.y * radius;
 
             // Draw the wheel
@@ -203,8 +203,8 @@ namespace UnityEditor.Rendering.Universal
         {
             float dx = (x - radius) / radius;
             float dy = (y - radius) / radius;
-            float d = Mathf.Sqrt(dx * dx + dy * dy);
-            hue = Mathf.Atan2(dx, -dy);
+            float d = System.MathF.Sqrt(dx * dx + dy * dy);
+            hue = System.MathF.Atan2(dx, -dy);
             hue = 1f - ((hue > 0) ? hue : (Mathf.PI * 2f) + hue) / (Mathf.PI * 2f);
             saturation = Mathf.Clamp01(d);
         }

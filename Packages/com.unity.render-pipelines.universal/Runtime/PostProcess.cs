@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;  // AggressiveInlining
 
 namespace UnityEngine.Rendering.Universal
 {
+
     internal sealed class PostProcess : IDisposable
     {
         // Passes

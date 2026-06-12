@@ -5,6 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     /// <summary>
     /// Struct container for shadow slice data.
     /// </summary>
@@ -387,7 +388,7 @@ namespace UnityEngine.Rendering.Universal
                 // handle this. For now, as a poor approximation we do a constant bias and compute the size of
                 // the frustum as if it was orthogonal considering the size at mid point between near and far planes.
                 // Depending on how big the light range is, it will be good enough with some tweaks in bias
-                frustumSize = Mathf.Tan(shadowLight.spotAngle * 0.5f * Mathf.Deg2Rad) * shadowLight.range; // half-width (in world-space units) of shadow frustum's "far plane"
+                frustumSize = System.MathF.Tan(shadowLight.spotAngle * 0.5f * Mathf.Deg2Rad) * shadowLight.range; // half-width (in world-space units) of shadow frustum's "far plane"
             }
             else if (shadowLight.lightType == LightType.Point)
             {
@@ -402,7 +403,7 @@ namespace UnityEngine.Rendering.Universal
                 float fovBias = Internal.AdditionalLightsShadowCasterPass.GetPointLightShadowFrustumFovBiasInDegrees((int)shadowResolution, (shadowLight.light.shadows == LightShadows.Soft));
                 // Note: the same fovBias was also used to compute ShadowUtils.ExtractPointLightMatrix
                 float cubeFaceAngle = 90 + fovBias;
-                frustumSize = Mathf.Tan(cubeFaceAngle * 0.5f * Mathf.Deg2Rad) * shadowLight.range; // half-width (in world-space units) of shadow frustum's "far plane"
+                frustumSize = System.MathF.Tan(cubeFaceAngle * 0.5f * Mathf.Deg2Rad) * shadowLight.range; // half-width (in world-space units) of shadow frustum's "far plane"
             }
             else
             {
@@ -750,7 +751,7 @@ namespace UnityEngine.Rendering.Universal
 
         internal static bool FastApproximately(float a, float b)
         {
-            return Mathf.Abs(a - b) < 0.000001f;
+            return System.MathF.Abs(a - b) < 0.000001f;
         }
 
         internal static bool FastApproximately(Vector4 a, Vector4 b)

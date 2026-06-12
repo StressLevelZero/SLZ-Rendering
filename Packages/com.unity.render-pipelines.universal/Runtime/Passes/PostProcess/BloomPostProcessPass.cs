@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices; // AggressiveInlining
 
 namespace UnityEngine.Rendering.Universal
 {
+
     internal sealed class BloomPostProcessPass : PostProcessPass
     {
         public const int k_MaxPyramidSize = 16;

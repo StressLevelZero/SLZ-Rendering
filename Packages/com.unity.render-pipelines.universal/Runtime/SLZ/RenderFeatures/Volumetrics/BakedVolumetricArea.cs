@@ -8,6 +8,8 @@ using SLZRendering.Runtime;
 using UnityEditor;
 #endif
 
+using Mathf = UnityEngine.BetterMathf;
+
 [ExecuteInEditMode]
 public class BakedVolumetricArea : MonoBehaviour
 {

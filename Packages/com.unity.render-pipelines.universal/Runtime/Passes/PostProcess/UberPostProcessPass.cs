@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices; // AggressiveInlining
 
 namespace UnityEngine.Rendering.Universal
 {
+
     internal sealed class UberPostProcessPass : PostProcessPass
     {
         Material m_Material;
@@ -339,7 +340,7 @@ namespace UnityEngine.Rendering.Universal
 
                 int lutWidth = lutHeight * lutHeight;
 
-                float postExposureLinear = Mathf.Pow(2f, colorAdjustments.postExposure.value);
+                float postExposureLinear = System.MathF.Pow(2f, colorAdjustments.postExposure.value);
                 internalLutParams = new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f, postExposureLinear);
 
                 userLutParams = !colorLookup.IsActive()
@@ -461,9 +462,9 @@ namespace UnityEngine.Rendering.Universal
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static public void CalcLensDistortionParams(LensDistortion lensDistortion, out Vector4 lensDistortionParams1, out Vector4 lensDistortionParams2)
             {
-                float amount = 1.6f * Mathf.Max(Mathf.Abs(lensDistortion.intensity.value * 100f), 1f);
+                float amount = 1.6f * Mathf.Max(System.MathF.Abs(lensDistortion.intensity.value * 100f), 1f);
                 float theta = Mathf.Deg2Rad * Mathf.Min(160f, amount);
-                float sigma = 2f * Mathf.Tan(theta * 0.5f);
+                float sigma = 2f * System.MathF.Tan(theta * 0.5f);
                 var center = lensDistortion.center.value * 2f - Vector2.one;
                 lensDistortionParams1 = new Vector4(
                     center.x,
