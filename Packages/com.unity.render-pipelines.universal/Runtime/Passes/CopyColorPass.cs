@@ -5,6 +5,7 @@ using UnityEngine.Rendering.RenderGraphModule.Util;
 
 namespace UnityEngine.Rendering.Universal.Internal
 {
+
     /// <summary>
     /// Copy the given color buffer to the given destination color buffer.
     ///

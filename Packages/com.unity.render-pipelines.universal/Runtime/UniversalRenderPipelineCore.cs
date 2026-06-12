@@ -9,6 +9,7 @@ using Lightmapping = UnityEngine.Experimental.GlobalIllumination.Lightmapping;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     static class NativeArrayExtensions
     {
         /// <summary>
@@ -1767,15 +1768,15 @@ namespace UnityEngine.Rendering.Universal
             // invAngleRange = 1.0 / (cosInnerAngle - cosOuterAngle)
             // SdotL * invAngleRange + (-cosOuterAngle * invAngleRange)
             // If we precompute the terms in a MAD instruction
-            float cosOuterAngle = Mathf.Cos(Mathf.Deg2Rad * spotAngle * 0.5f);
+            float cosOuterAngle = System.MathF.Cos(Mathf.Deg2Rad * spotAngle * 0.5f);
             // We need to do a null check for particle lights
             // This should be changed in the future
             // Particle lights will use an inline function
             float cosInnerAngle;
             if (innerSpotAngle.HasValue)
-                cosInnerAngle = Mathf.Cos(innerSpotAngle.Value * Mathf.Deg2Rad * 0.5f);
+                cosInnerAngle = System.MathF.Cos(innerSpotAngle.Value * Mathf.Deg2Rad * 0.5f);
             else
-                cosInnerAngle = Mathf.Cos((2.0f * Mathf.Atan(Mathf.Tan(spotAngle * 0.5f * Mathf.Deg2Rad) * (64.0f - 18.0f) / 64.0f)) * 0.5f);
+                cosInnerAngle = System.MathF.Cos((2.0f * System.MathF.Atan(System.MathF.Tan(spotAngle * 0.5f * Mathf.Deg2Rad) * (64.0f - 18.0f) / 64.0f)) * 0.5f);
             float smoothAngleRange = Mathf.Max(0.001f, cosInnerAngle - cosOuterAngle);
             float invAngleRange = 1.0f / smoothAngleRange;
             float add = -cosOuterAngle * invAngleRange;

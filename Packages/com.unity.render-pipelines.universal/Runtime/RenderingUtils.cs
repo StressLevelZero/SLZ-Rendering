@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     /// <summary>
     /// Contains properties and helper functions that you can use when rendering.
     /// </summary>
@@ -388,7 +389,7 @@ namespace UnityEngine.Rendering.Universal
                 handle.rt.filterMode != descriptor.filterMode ||
                 handle.rt.wrapMode != descriptor.wrapMode ||
                 handle.rt.anisoLevel != descriptor.anisoLevel ||
-                Mathf.Abs(handle.rt.mipMapBias - descriptor.mipMapBias) > Mathf.Epsilon ||
+                System.MathF.Abs(handle.rt.mipMapBias - descriptor.mipMapBias) > Mathf.Epsilon ||
                 handle.name != descriptor.name;
         }
 

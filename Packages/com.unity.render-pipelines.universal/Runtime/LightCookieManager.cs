@@ -434,9 +434,9 @@ namespace UnityEngine.Rendering.Universal
             Vector2 uvScale = Vector2.one / additionalLightData.lightCookieSize;
             Vector2 uvOffset = additionalLightData.lightCookieOffset;
 
-            if (Mathf.Abs(uvScale.x) < half.MinValue)
+            if (System.MathF.Abs(uvScale.x) < half.MinValue)
                 uvScale.x = Mathf.Sign(uvScale.x) * half.MinValue;
-            if (Mathf.Abs(uvScale.y) < half.MinValue)
+            if (System.MathF.Abs(uvScale.y) < half.MinValue)
                 uvScale.y = Mathf.Sign(uvScale.y) * half.MinValue;
 
             uvTransform = Matrix4x4.Scale(new Vector3(uvScale.x, uvScale.y, 1));
@@ -656,7 +656,7 @@ namespace UnityEngine.Rendering.Universal
         {
             // (Edge / N)^2 == 1/N^2 of area.
             // Ratio/N^2 == 1, sqrt(Ratio) == N, for "1:1" ratio.
-            return (int)Mathf.Max(Mathf.Ceil(Mathf.Sqrt(requestAtlasRatio)), 1);
+            return (int)Mathf.Max(Mathf.Ceil(System.MathF.Sqrt(requestAtlasRatio)), 1);
         }
 
         Vector4 Fetch2D(CommandBuffer cmd, Texture cookie, int cookieSizeDivisor = 1)

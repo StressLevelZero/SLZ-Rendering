@@ -8,6 +8,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal
 {
+
     /// <summary>
     /// Class <c>ScriptableRenderer</c> implements a rendering strategy. It describes how culling and lighting work and
     /// the effects supported. A custom scriptable renderer is the lowest level of extensibility of URP. It allows you
@@ -332,7 +333,7 @@ namespace UnityEngine.Rendering.Universal
                 float taaMipBias = Math.Min(cameraData.taaSettings.mipBias, 0.0f);
                 mipBias = Math.Min(mipBias, taaMipBias);
             }
-            cmd.SetGlobalVector(ShaderPropertyId.globalMipBias, new Vector2(mipBias, Mathf.Pow(2.0f, mipBias)));
+            cmd.SetGlobalVector(ShaderPropertyId.globalMipBias, new Vector2(mipBias, System.MathF.Pow(2.0f, mipBias)));
 
             //Set per camera matrices.
             SetCameraMatrices(cmd, cameraData, true, isTargetFlipped);
@@ -391,7 +392,7 @@ namespace UnityEngine.Rendering.Universal
             // signed angle is calculated on X-Z plane
             float s = worldRight.x * billboardTangent.z - worldRight.z * billboardTangent.x;
             float c = worldRight.x * billboardTangent.x + worldRight.z * billboardTangent.z;
-            cameraXZAngle = Mathf.Atan2(s, c);
+            cameraXZAngle = System.MathF.Atan2(s, c);
 
             // convert to [0,2PI)
             if (cameraXZAngle < 0)
@@ -431,11 +432,11 @@ namespace UnityEngine.Rendering.Universal
 
             // Time values
             Vector4 timeVector = time * new Vector4(1f / 20f, 1f, 2f, 3f);
-            Vector4 sinTimeVector = new Vector4(Mathf.Sin(timeEights), Mathf.Sin(timeFourth), Mathf.Sin(timeHalf), Mathf.Sin(time));
-            Vector4 cosTimeVector = new Vector4(Mathf.Cos(timeEights), Mathf.Cos(timeFourth), Mathf.Cos(timeHalf), Mathf.Cos(time));
+            Vector4 sinTimeVector = new Vector4(System.MathF.Sin(timeEights), System.MathF.Sin(timeFourth), System.MathF.Sin(timeHalf), System.MathF.Sin(time));
+            Vector4 cosTimeVector = new Vector4(System.MathF.Cos(timeEights), System.MathF.Cos(timeFourth), System.MathF.Cos(timeHalf), System.MathF.Cos(time));
             Vector4 deltaTimeVector = new Vector4(deltaTime, 1f / deltaTime, smoothDeltaTime, 1f / smoothDeltaTime);
-            Vector4 timeParametersVector = new Vector4(time, Mathf.Sin(time), Mathf.Cos(time), 0.0f);
-            Vector4 lastTimeParametersVector = new Vector4(lastTime, Mathf.Sin(lastTime), Mathf.Cos(lastTime), 0.0f);
+            Vector4 timeParametersVector = new Vector4(time, System.MathF.Sin(time), System.MathF.Cos(time), 0.0f);
+            Vector4 lastTimeParametersVector = new Vector4(lastTime, System.MathF.Sin(lastTime), System.MathF.Cos(lastTime), 0.0f);
 
             cmd.SetGlobalVector(ShaderPropertyId.time, timeVector);
             cmd.SetGlobalVector(ShaderPropertyId.sinTime, sinTimeVector);

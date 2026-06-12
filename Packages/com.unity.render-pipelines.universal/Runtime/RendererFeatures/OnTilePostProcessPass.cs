@@ -3,6 +3,9 @@ using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Experimental.Rendering;
+/// SLZ MODIFIED - Fix Mathf
+using Mathf = UnityEngine.BetterMathf;
+/// END SLZ MODIFIED
 
 /// <summary>
 /// Renders the on-tile post-processing stack.
@@ -314,7 +317,7 @@ public class OnTilePostProcessPass : ScriptableRenderPass
         int lutHeight = lutSize;
         int lutWidth = lutHeight * lutHeight;
 
-        float postExposureLinear = Mathf.Pow(2f, colorAdjustments.postExposure.value);
+        float postExposureLinear = System.MathF.Pow(2f, colorAdjustments.postExposure.value);
         Vector4 lutParams = new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f, postExposureLinear);
 
         Vector4 userLutParams = !colorLookup.IsActive()
