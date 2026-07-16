@@ -7,20 +7,34 @@
 #undef unity_WorldToObject
 #undef unity_MatrixPreviousM
 #undef unity_MatrixPreviousMI
+/// SLZ MODIFIED - Split cbuffer and static override flag definition created by UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED. This put the static parameters inside the cbuffer which crashes DXC
 // TODO: This might not work correctly in all cases, double check!
 UNITY_DOTS_INSTANCING_START(BuiltinPropertyMetadata)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float3x4, unity_ObjectToWorld)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float3x4, unity_WorldToObject)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float4,   unity_SpecCube0_HDR)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float4,   unity_LightmapST)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float4,   unity_LightmapIndex)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float4,   unity_DynamicLightmapST)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float3x4, unity_MatrixPreviousM)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(float3x4, unity_MatrixPreviousMI)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(SH,       unity_SHCoefficients)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(uint2,    unity_EntityId)
-    UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(uint,     unity_RendererUserValuesPropertyEntry)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float3x4, unity_ObjectToWorld)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float3x4, unity_WorldToObject)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float4,   unity_SpecCube0_HDR)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float4,   unity_LightmapST)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float4,   unity_LightmapIndex)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float4,   unity_DynamicLightmapST)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float3x4, unity_MatrixPreviousM)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(float3x4, unity_MatrixPreviousMI)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(SH,       unity_SHCoefficients)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(uint2,    unity_EntityId)
+    UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(uint,     unity_RendererUserValuesPropertyEntry)
 UNITY_DOTS_INSTANCING_END(BuiltinPropertyMetadata)
+
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float3x4, unity_ObjectToWorld)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float3x4, unity_WorldToObject)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float4,   unity_SpecCube0_HDR)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float4,   unity_LightmapST)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float4,   unity_LightmapIndex)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float4,   unity_DynamicLightmapST)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float3x4, unity_MatrixPreviousM)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(float3x4, unity_MatrixPreviousMI)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(SH,       unity_SHCoefficients)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(uint2,    unity_EntityId)
+UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(uint,     unity_RendererUserValuesPropertyEntry)
+/// END SLZ MODIFIED
 
 #define unity_LODFade               LoadDOTSInstancedData_LODFade()
 #define unity_SpecCube0_HDR         UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_CUSTOM_DEFAULT(float4, unity_SpecCube0_HDR, unity_DOTS_SpecCube0_HDR)
