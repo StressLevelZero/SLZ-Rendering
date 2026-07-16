@@ -3,7 +3,7 @@
 
 TEXTURE2D(_FgdGgx);
 
-half2 SampleFdg(TEXTURE2D(fgd), const half NoV, const half perceptualR)
+half2 SampleFgd(TEXTURE2D(fgd), const half NoV, const half perceptualR)
 {
     uint2 dim = 0;
     uint lvl = 0;

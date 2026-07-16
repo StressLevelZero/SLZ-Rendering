@@ -141,6 +141,8 @@ namespace UnityEditor.Rendering
 
         static void SendWidgetValueChangedAnalytic<T>(string queryPath, T previousValue, T newValue)
         {
+            /// SLZ MODIFIED - REMOVE ANALYTICS
+            /*
             if (queryPath == null)
                 return;
 
@@ -158,6 +160,8 @@ namespace UnityEditor.Rendering
                 new_value = newValue
             } };
             GraphicsToolUsageAnalytic.ActionPerformed<DebugWindow>("Widget Value Changed", analytic.ToNestedColumn());
+            */
+            /// END SLZ MODIFIED
         }
 
         // Note: this won't get called if the window is opened when the editor itself is closed
