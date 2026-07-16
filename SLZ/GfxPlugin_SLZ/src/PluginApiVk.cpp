@@ -658,6 +658,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCrea
 #define REQUESTED_VK_EXTS(macro) \
     macro(KHR_fragment_shading_rate) \
     macro(KHR_fragment_shader_barycentric) \
+    macro(KHR_multiview) \
     //macro(NV_shading_rate_image) \
     //macro(EXT_extended_dynamic_state3) \
     //macro(EXT_blend_operation_advanced)
@@ -832,6 +833,14 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         featureChainNext = (VkBaseOutStructure*)(&baryFeatures);
     }
 
+    VkPhysicalDeviceMultiviewFeatures multiviewFeatures = {};
+    multiviewFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+    if (extIsAvailable[RequestedVkExtensions::KHR_multiview])
+    {
+        featureChainNext->pNext = (VkBaseOutStructure*)(&multiviewFeatures);
+        featureChainNext = (VkBaseOutStructure*)(&multiviewFeatures);
+    }
+
 
     VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT advBlendOps = {};
     advBlendOps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT;
@@ -874,6 +883,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
     
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR* defaultFeatures = nullptr;
     VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR* defaultBaryFeatures = nullptr;
+    VkPhysicalDeviceMultiviewFeatures* defaultMultiviewFeatures = nullptr;
     
     void* pNext = (void*)newCreateInfo->pNext;
     void* previousStruct = (void*)&newCreateInfo;
@@ -913,9 +923,20 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
             }
         }
 
-        if (pNextType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR)
+        else if (pNextType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR)
         {
             defaultBaryFeatures = (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)pNext;
+        }
+
+        else if (pNextType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES)
+        {
+            defaultMultiviewFeatures = (VkPhysicalDeviceMultiviewFeatures*)pNext;
+            PluginState::Log(kUnityLogTypeLog, std::format("Found existing multiview features, supports multiview: {:d}, supports geo: {:d}, supports tess: {:d}",
+                defaultMultiviewFeatures->multiview,
+                defaultMultiviewFeatures->multiviewGeometryShader,
+                defaultMultiviewFeatures->multiviewTessellationShader
+            ).c_str(), "", 0);
+
         }
 
         pNext = ((VkBaseOutStructure*)pNext)->pNext;
@@ -942,6 +963,17 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
     {
         ((VkBaseOutStructure*)previousStruct)->pNext = (VkBaseOutStructure*)&baryFeatures;
         previousStruct = &baryFeatures;
+    }
+
+    if (!defaultMultiviewFeatures && extIsAvailable[RequestedVkExtensions::KHR_multiview])
+    {
+        PluginState::Log(kUnityLogTypeLog, std::format("Adding new multiview features, supports multiview: {}, supports geo: {}, supports tess: {}",
+            defaultMultiviewFeatures->multiview,
+            defaultMultiviewFeatures->multiviewGeometryShader,
+            defaultMultiviewFeatures->multiviewTessellationShader
+        ).c_str(), "", 0);
+        ((VkBaseOutStructure*)previousStruct)->pNext = (VkBaseOutStructure*)&multiviewFeatures;
+        previousStruct = &multiviewFeatures;
     }
 
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR* usedFragRateFeatures = defaultFeatures != nullptr ? defaultFeatures : &vrsFeatures;

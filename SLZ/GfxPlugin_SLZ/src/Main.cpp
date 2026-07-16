@@ -220,6 +220,12 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API PrintStatusMessage()
     }
 }
 
+typedef char(*SupportsMultiview)();
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API InvokeFnPtr(void* ptr)
+{
+   ((SupportsMultiview)ptr)();
+}
+
 static PluginAPI* GetPlatformAPI(UnityGfxRenderer renderer)
 {
 #if DUMMY_PLUGIN
