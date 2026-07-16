@@ -504,9 +504,11 @@ namespace UnityEditor.Rendering.Converter
             AssetDatabase.SaveAssets();
 
             RefreshUI();
-
+/// SLZ MODIFIED - Remove Analyztics
+/*
             GraphicsToolUsageAnalytic.ActionPerformed<RenderPipelineConvertersEditor>(nameof(Convert), contextInfo.ToNestedColumn());
-
+*/
+/// END SLZ MODIFIED
             Debug.Log(sb);
         }
 
