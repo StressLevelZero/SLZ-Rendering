@@ -68,7 +68,7 @@ namespace SLZ.SLZEditorTools
         { ShaderType.Geometry, "geom" },
         { ShaderType.Hull, "hs" },
         { ShaderType.Domain, "ds" },
-        //{ (ShaderType)6, "surf" },
+        //{ ShaderType.RayTracing, "surf" },
         { ShaderType.RayTracing, "rayt" }
     };
 
@@ -758,7 +758,14 @@ namespace SLZ.SLZEditorTools
 
                 object shaderInfo = FrameDebuggerEventData_m_ShaderInfo.GetValue(frameEventData);
 
-                this.shaderKeywords.Clear();
+                if (shaderKeywords != null)
+                {
+                    this.shaderKeywords.Clear();
+                }
+                else
+                {
+                    this.shaderKeywords = new ();
+                }
                 IEnumerable keywordArray = (IEnumerable)ShaderInfo_m_Keywords.GetValue(shaderInfo);
                 foreach (object keyword in keywordArray)
                 {

@@ -129,8 +129,14 @@ static const int kDotsInstancedPropOverrideRequired = 2;
 #define UNITY_DOTS_INSTANCED_METADATA_NAME(type, name) UNITY_DOTS_INSTANCING_CONCAT_WITH_METADATA(unity_DOTSInstancing, UNITY_DOTS_INSTANCING_CONCAT2(UNITY_DOTS_INSTANCING_TYPESPEC_, type), name)
 #define UNITY_DOTS_INSTANCED_PROP_OVERRIDE_MODE_NAME(name) UNITY_DOTS_INSTANCING_CONCAT2(name, _DOTSInstancingOverrideMode)
 
+/// SLZ MODIFIED - Declaring initialized static parameters inside a cbuffer crashes DXC!!! declare the static parameters and the cbuffer values seperately
+#define UNITY_DOTS_INSTANCED_PROP_NO_OVERRIDE(type, name) uint UNITY_DOTS_INSTANCED_METADATA_NAME(type, name);
+#define UNITY_DOTS_INSTANCED_PROP_ONLY_OVERRIDE(type, name) static const int UNITY_DOTS_INSTANCED_PROP_OVERRIDE_MODE_NAME(name) = kDotsInstancedPropOverrideSupported;
+
 #define UNITY_DOTS_INSTANCING_START(name) cbuffer UnityDOTSInstancing_##name {
 #define UNITY_DOTS_INSTANCING_END(name)   }
+
+#if !defined(UNITY_COMPILER_DXC)
 
 #define UNITY_DOTS_INSTANCED_PROP_OVERRIDE_DISABLED(type, name) static const uint UNITY_DOTS_INSTANCED_METADATA_NAME(type, name) = 0; \
 static const int UNITY_DOTS_INSTANCED_PROP_OVERRIDE_MODE_NAME(name) = kDotsInstancedPropOverrideDisabled;
@@ -140,6 +146,17 @@ static const int UNITY_DOTS_INSTANCED_PROP_OVERRIDE_MODE_NAME(name) = kDotsInsta
 
 #define UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(type, name) uint UNITY_DOTS_INSTANCED_METADATA_NAME(type, name); \
 static const int UNITY_DOTS_INSTANCED_PROP_OVERRIDE_MODE_NAME(name) = kDotsInstancedPropOverrideRequired;
+
+#else // !defined(UNITY_COMPILER_DXC)
+
+#define PRINT_DOTS_DXC_ERROR(hash, value) hash error value
+#define UNITY_DOTS_INSTANCED_PROP_OVERRIDE_DISABLED(type, name) PRINT_DOTS_DXC_ERROR(#, DOTS instancing macro that declares a static parameter inside a cbuffer is being used. This crashes DXC! )
+#define UNITY_DOTS_INSTANCED_PROP_OVERRIDE_SUPPORTED(type, name) PRINT_DOTS_DXC_ERROR(#, DOTS instancing macro that declares a static parameter inside a cbuffer is being used. This crashes DXC! )
+#define UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(type, name) PRINT_DOTS_DXC_ERROR(#, DOTS instancing macro that declares a static parameter inside a cbuffer is being used. This crashes DXC! )
+
+#endif // defined(UNITY_COMPILER_DXC)
+
+/// END SLZ MODIFIED
 
 #ifdef UNITY_DOTS_INSTANCED_PROP_OVERRIDE_DISABLED_BY_DEFAULT
 #define UNITY_DOTS_INSTANCED_PROP(type, name) UNITY_DOTS_INSTANCED_PROP_OVERRIDE_DISABLED(type, name)
