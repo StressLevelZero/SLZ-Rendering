@@ -19,6 +19,16 @@ namespace SLZRendering.Runtime
         private int m_ShadingRateImageID;
         private RenderTextureDescriptor m_ShadingRateImageDescriptor;
         private ulong m_SRIDescHash64;
+        public bool isGenerated = false;
+
+        public static ulong ComputeSRIHashFromResolution(int width, int height, int slices)
+        {
+            Vector2Int tileSize = ShadingRateInfo.imageTileSize;
+            return  ((ulong)((width  + tileSize.x - 1) / tileSize.x) & 0xFFFFUL) | 
+                   (((ulong)((height + tileSize.y - 1) / tileSize.y) & 0xFFFFUL) << 16) |
+                   ((ulong)slices << 32);
+
+        }
 
         public static ulong ComputeSRIHashFromCameraTarget(ref TextureDesc cameraTgt)
         {
@@ -68,9 +78,14 @@ namespace SLZRendering.Runtime
             return m_SRIDescHash64 != ComputeSRIHashFromCameraTarget(ref cameraTgtDesc);
         }
 
+        private bool IsDirty(int width, int height, int slices)
+        {
+            return m_SRIDescHash64 != ComputeSRIHashFromResolution(width, height, slices);
+        }
+
         private void Alloc(ref TextureDesc cameraTgtDesc)
         {
-
+            isGenerated = false;
             m_ShadingRateImageDescriptor = GetShadingRateImageDesc(ref cameraTgtDesc);
             AllocHistoryFrameRT(m_ShadingRateImageID, 1, ref m_ShadingRateImageDescriptor, FilterMode.Point, "ShadingRateImage");
             m_SRIDescHash64 = ComputeSRIHash(ref m_ShadingRateImageDescriptor);
@@ -86,7 +101,7 @@ namespace SLZRendering.Runtime
             Vector2Int tileSize = ShadingRateInfo.imageTileSize;
             newDesc.width  = (cameraTgtDesc.width  + tileSize.x - 1) / tileSize.x;
             newDesc.height = (cameraTgtDesc.height + tileSize.y - 1) / tileSize.y;
-            bool supportsLayeredAttachments = SLZ.GfxPlugin_SLZ.SupportsLayeredShadingRate() != 0;
+            bool supportsLayeredAttachments = SystemInfo.foveatedRenderingCaps.HasFlag(FoveatedRenderingCaps.NonUniformRaster) || SLZ.GfxPlugin_SLZ.SupportsLayeredShadingRate();
             newDesc.volumeDepth = supportsLayeredAttachments ? cameraTgtDesc.slices : 1;
             newDesc.dimension   = supportsLayeredAttachments ? cameraTgtDesc.dimension : TextureDimension.Tex2D;
             newDesc.msaaSamples = 1;
@@ -122,6 +137,7 @@ namespace SLZRendering.Runtime
                 if (!IsAllocated())
                 {
                     Alloc(ref cameraTgtDesc);
+                    isGenerated = false;
                     return true;
                 }
 
