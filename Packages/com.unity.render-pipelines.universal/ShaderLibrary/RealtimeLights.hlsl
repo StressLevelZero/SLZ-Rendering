@@ -14,11 +14,17 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Light.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.deprecated.hlsl"
 
+/// SLZ MODIFIED - Light alpha now stores UV, not subtractive flag
+/*
 #if USE_CLUSTER_LIGHT_LOOP
+*/
+#if 0
     #define CLUSTER_LIGHT_LOOP_SUBTRACTIVE_LIGHT_CHECK if (LightmapAvailable() && LightmapShadowMixingAvailable() && _AdditionalLightsColor[lightIndex].a > 0.0h) continue;
 #else
     #define CLUSTER_LIGHT_LOOP_SUBTRACTIVE_LIGHT_CHECK
 #endif
+/// END SLZ MODIFIED
+
 
 #if defined(UNITY_PLATFORM_META_QUEST) && META_QUEST_LIGHTUNROLL
 	#define UNROLL_ONELIGHT [unroll(1)]

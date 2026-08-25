@@ -139,10 +139,13 @@ CBUFFER_START(AdditionalLights)
 #endif
 float4 _AdditionalLightsPosition[MAX_VISIBLE_LIGHTS];
 // In Forward+, .a stores whether the light is using subtractive mixed mode.
-float4 _AdditionalLightsColor[MAX_VISIBLE_LIGHTS];
-float4 _AdditionalLightsAttenuation[MAX_VISIBLE_LIGHTS];
-float4 _AdditionalLightsSpotDir[MAX_VISIBLE_LIGHTS];
-float4 _AdditionalLightsOcclusionProbes[MAX_VISIBLE_LIGHTS];
+half4 _AdditionalLightsColor[MAX_VISIBLE_LIGHTS];
+half4 _AdditionalLightsAttenuation[MAX_VISIBLE_LIGHTS];
+half4 _AdditionalLightsSpotDir[MAX_VISIBLE_LIGHTS];
+half4 _AdditionalLightsOcclusionProbes[MAX_VISIBLE_LIGHTS];
+// SLZ MODIFIED - "Index" of the first important light. Actually more of a flag, will always be MAX_VISIBLE_LIGHTS - 1 if an important light is present or -1 if not. Used on Quest 3 (adreno) since array accesses by an index not known at compile time become GMEM loads (basically a texture sample)
+int _ImportantLightIndex;
+// END SLZ MODIFIED
 #ifndef LIGHT_SHADOWS_NO_CBUFFER
 CBUFFER_END
 #endif
