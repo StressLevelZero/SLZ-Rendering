@@ -400,7 +400,9 @@ namespace UnityEngine.Rendering.Universal
 
             CreateRenderingLayersTexture(renderGraph, cameraDescriptor);
 
+            /// SLZ MODIFIED
             CreateShadingRateTexture(renderGraph, cameraData, cameraDescriptor);
+            /// END SLZ MODIFIED
 
             if (cameraData.isHDROutputActive && cameraData.rendersOverlayUI)
                 CreateOffscreenUITexture(renderGraph, cameraDescriptor);
@@ -1010,9 +1012,33 @@ namespace UnityEngine.Rendering.Universal
             }
 
             /// SLZ MODIFIED - Add fragment shading rate image
-            #if !UNITY_ANDROID
-            m_PopulateShadingRatePass.Render(renderGraph, frameData, resourceData.cameraShadingRateTexture);
-            #endif
+            //#if !UNITY_ANDROID
+            int targetWidth = 0, targetHeight = 0, targetSlices = 0;
+            if (!resourceData.isActiveTargetBackBuffer)
+            {
+                TextureDesc colorDesc = renderGraph.GetTextureDesc(resourceData.activeColorTexture);
+                targetWidth = colorDesc.width;
+                targetHeight = colorDesc.height;
+                targetSlices = colorDesc.slices;
+            }
+            else if (cameraData.xr.enabled)
+            {
+                targetWidth = cameraData.xr.renderTargetDesc.width;
+                targetHeight = cameraData.xr.renderTargetDesc.height;
+                targetSlices = cameraData.xr.renderTargetDesc.volumeDepth;
+            }
+            else
+            {
+                targetWidth = cameraData.cameraTargetDescriptor.width;
+                targetHeight = cameraData.cameraTargetDescriptor.height;
+                targetSlices = cameraData.cameraTargetDescriptor.volumeDepth;
+
+            }
+
+            m_PopulateShadingRatePass.Render(renderGraph, frameData, resourceData.cameraShadingRateTexture, 
+                resourceData.isActiveTargetBackBuffer,
+                targetWidth, targetHeight, targetSlices);
+            //#endif
 
             if (renderingData.stencilLodCrossFadeEnabled)
                 m_StencilCrossFadeRenderPass.Render(renderGraph, context, resourceData.activeDepthTexture);
@@ -2046,9 +2072,6 @@ namespace UnityEngine.Rendering.Universal
         /// SLZ MODIFIED - Add shading rate image
         void CreateShadingRateTexture(RenderGraph renderGraph, UniversalCameraData cameraData, TextureDesc cameraDescriptor)
         {
-#if UNITY_ANDROID // Quest/Android uses fragment density map, which is incompatible with fragment shading rate image!
-            return;
-#else
             if (!ShadingRateInfo.supportsPerImageTile)
             {
                 return;
@@ -2067,7 +2090,6 @@ namespace UnityEngine.Rendering.Universal
             srHistory.GetCurrentTexture(out RTHandle srRt);
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
             resourceData.cameraShadingRateTexture = renderGraph.ImportTexture(srRt);
-#endif
         }
         /// END SLZ MODIFIED
 
