@@ -52,6 +52,8 @@ namespace UnityEngine.Rendering.Universal.Internal
             public TextureHandle shadingRateTex;
             public Vector4 eyeCenterCoords;
             public ShadingRateImageHistory.FoveationSettings fovSettings;
+            public bool uvStartsAtTop;
+            public bool isFragmentDensityMap;
         }
 
         private static void ExecutePass(ComputeCommandBuffer cmd, PassData passData)
@@ -88,16 +90,11 @@ namespace UnityEngine.Rendering.Universal.Internal
 /// <param name="projLeft" >Left eye projection matrix</param>
 /// <param name="projRight">Right eye projection matrix</param>
 /// <returns>Vector4 containing (left eye uv, right eye uv) coordinates of the left and right eye directions</returns>
-public static Vector4 CalculateEyeUVCoordinatesDir(Vector3 eyeDirLeft, Vector3 eyeDirRight, float4x4 viewLeft, float4x4 viewRight, float4x4 projLeft, float4x4 projRight)
+public static Vector4 CalculateEyeUVCoordinatesDir(Vector3 eyeDirLeft, Vector3 eyeDirRight, float4x4 projLeft, float4x4 projRight)
 {
-    eyeDirLeft  = eyeDirLeft  * 1000.0f;
-    eyeDirRight = eyeDirRight * 1000.0f;
 
-    float3x3 viewLeftNoTranslation  = (float3x3)viewLeft;
-    float3x3 viewRightNoTranslation = (float3x3)viewRight;
-
-    float3 eyeCenterView_left  = math.mul(viewLeftNoTranslation, eyeDirLeft);
-    float3 eyeCenterView_right = math.mul(viewRightNoTranslation, eyeDirRight);
+    float3 eyeCenterView_left  = eyeDirLeft;
+    float3 eyeCenterView_right = eyeDirRight;
 
     float4 eyeCenterProj_left  = math.mul(projLeft,  math.float4(eyeCenterView_left, 1.0f));
     float4 eyeCenterProj_right = math.mul(projRight, math.float4(eyeCenterView_right, 1.0f));
@@ -118,19 +115,37 @@ public static Vector4 CalculateEyeUVCoordinatesDir(Vector3 eyeDirLeft, Vector3 e
 /// Does not suffer from precision issues like <see cref="CalculateEyeUVCoordinatesWS"/> when far from origin
 /// </summary>
 /// <param name="cameraData">UniversalCameraData, obtain from <see cref="UnityEngine.Rendering.ContextContainer.Get{UnityEngine.Rendering.UniversalCameraData}()"/></param>
-/// <param name="eyeDirLeft" >Left eye direction vector in worldspace (use Camera.transform.forward for fixed foveation)</param>
-/// <param name="eyeDirRight">Right eye direction vector in worldspace (use Camera.transform.forward for fixed foveation)</param>
+/// <param name="eyeDirLeft" >Left eye direction vector in view space</param>
+/// <param name="eyeDirRight">Right eye direction vector in view space</param>
+/// <param name="colToSrRatio">(Color target resolution) / (shading rate attachment resolution * tile size). Shading rate image does not perfectly cover 
 /// <param name="isTargetFlipped">Is the rendertarget flipped? True if not rendering directly to the backbuffer. Unity tries to normalize its uv coordinate system to OpenGL style with 0,0 at bottom left, which is upside-down for D3D and Vulkan. If rendering directly to the backbuffer it is forced to use the API defined UV coordinate system.</param>
 /// <returns>Vector4 containing (left eye uv, right eye uv) coordinates of the left and right eye directions</returns>
 public static Vector4 CalculateEyeUVCoordinatesDir(UniversalCameraData cameraData, Vector3 eyeDirLeft, Vector3 eyeDirRight, bool isTargetFlipped)
 {
     int rightEyeIndex = cameraData.xr.singlePassEnabled ? 1 : 0;
-    Matrix4x4 viewLeft  = cameraData.GetViewMatrix(0);
-    Matrix4x4 viewRight = cameraData.GetViewMatrix(rightEyeIndex);
 
     Matrix4x4 projLeft  = GL.GetGPUProjectionMatrix(cameraData.GetProjectionMatrixNoJitter(0), isTargetFlipped);
     Matrix4x4 projRight = GL.GetGPUProjectionMatrix(cameraData.GetProjectionMatrixNoJitter(rightEyeIndex), isTargetFlipped);
-    return CalculateEyeUVCoordinatesDir(eyeDirLeft, eyeDirRight, viewLeft, viewRight, projLeft, projRight);
+    Vector4 eyeCoords = CalculateEyeUVCoordinatesDir(eyeDirLeft, eyeDirRight, projLeft, projRight);
+    return eyeCoords;
+}
+
+/// <summary>
+/// Calculates the ratio of the screen size to the size of the region covered by the shading rate image.
+/// Since each pixel of the shading rate image covers exactly one 16x16 or 8x8 tile, it actually extends
+/// outside the area of the screen if the resolution is not perfectly a multiple of the tile size. Thus
+/// to convert from screen coordinates to coordinates within the shading rate image we need to multiply
+/// by the ratio of the color target's resolution to the shading rate image's resolution * the tile size 
+/// </summary>
+/// <param name="srWidth"   >Width of the shading rate attachment</param>
+/// <param name="srHeight"  >Height of the shading rate attachment</param>
+/// <param name="colorWidth" >Width of the color target</param>
+/// <param name="colorHeight">Height of the color target</param>
+/// <returns>Scale factor that converts from screen coordinates/uvs to coordinates/uvs within the shading rate image</returns>
+public static Vector2 GetColorToShadingRateSizeRatio(int srWidth, int srHeight, int colorWidth, int colorHeight)
+{
+    return new Vector2( colorWidth  / (srWidth  * ShadingRateInfo.imageTileSize.x), 
+                        colorHeight / (srHeight * ShadingRateInfo.imageTileSize.y));
 }
 
 
@@ -185,50 +200,51 @@ public static Vector4 CalculateEyeUVCoordinatesWS(UniversalCameraData cameraData
 
 
 
-        internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle shadingRateTexture)
+        internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle shadingRateTexture, 
+            bool isActiveTargetBackBuffer, in int targetWidth, in int targetHeight, in int targetSlices)
         {
             if (!shadingRateTexture.IsValid())
             {
+                //Debug.LogWarning("shadingRateTexture not valid");
                 return;
             }
             UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
             UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
             if (!cameraData.xr.enabled)
             {
+                //Debug.LogWarning("XR Not Enabled");
                 return;
             }
             UniversalLightData lightData = frameData.Get<UniversalLightData>();
             ShadingRateImageHistory srHistory = cameraData.historyManager.GetHistoryForWrite<ShadingRateImageHistory>();
 
+            if (srHistory.isGenerated)
+            {
+                return;
+            }
             using (var builder = renderGraph.AddComputePass<PassData>(passName, out var passData, profilingSampler))
             {
                 builder.AllowGlobalStateModification(true);
                 passData.populateShader = s_populateShader;
                 passData.profilingSampler = profilingSampler;
                 passData.shadingRateTex = shadingRateTexture;
+               
                 TextureDesc srTexDesc = renderGraph.GetTextureDesc(shadingRateTexture);
+                passData.isFragmentDensityMap = srTexDesc.format == GraphicsFormat.R8G8_UNorm;
+                
                 passData.shadingRateTexDimensions = new int3(srTexDesc.width, srTexDesc.height, math.max(1,srTexDesc.slices));
                 int rightEyeIndex = cameraData.xr.singlePassEnabled ? 1 : 0;
-                /*
-                Matrix4x4 p_left = cameraData.GetProjectionMatrix(0);
-                Matrix4x4 p_right = cameraData.GetProjectionMatrix(rightEyeIndex);
-                Vector2 centerLeft = CalculateEyeCenterParallel(p_left);
 
-                Vector2 centerRight = CalculateEyeCenterParallel(p_right);
-                passData.eyeCenterCoords = new Vector4(centerLeft.x, centerLeft.y, centerRight.x, centerRight.y);
-                */
-
-                bool yFlip = cameraData.stackAnyPostProcessingEnabled;
+                bool yFlip = isActiveTargetBackBuffer;
                 Vector3 focalPoint = cameraData.camera.transform.localToWorldMatrix.MultiplyPoint(cameraData.camera.transform.forward * 200.0f);
-                passData.eyeCenterCoords = CalculateEyeUVCoordinatesDir(cameraData, cameraData.camera.transform.forward, cameraData.camera.transform.forward, yFlip);
-
+                passData.eyeCenterCoords = CalculateEyeUVCoordinatesDir(cameraData, new Vector3(0, -0.17f, -1f), new Vector3(0, -0.17f, -1f), yFlip);
                 builder.UseTexture(shadingRateTexture, AccessFlags.ReadWrite);
-
 
                 builder.SetRenderFunc((PassData data, ComputeGraphContext context) =>
                 {
                     ExecutePass(context.cmd, passData);
                 });
+                srHistory.isGenerated = true;
             }
         }
     }
