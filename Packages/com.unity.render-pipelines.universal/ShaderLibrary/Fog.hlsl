@@ -4,6 +4,7 @@
 
 #if USE_DYNAMIC_BRANCH_FOG_KEYWORD
 #pragma dynamic_branch _ FOG_LINEAR FOG_EXP FOG_EXP2
+#error USE_DYNAMIC_BRANCH_FOG_KEYWORD declared
 #else
 #pragma multi_compile_fog
 #endif

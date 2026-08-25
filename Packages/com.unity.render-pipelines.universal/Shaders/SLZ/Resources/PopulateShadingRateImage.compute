@@ -6,11 +6,25 @@
 // with cs.SetTexture
 
 #pragma multi_compile _ ARRAY_TARGET
+#pragma multi_compile _ FRAGMENT_DENSITY_MAP
+
+// Unity actually uses the fragment density map if it is available instead of the shading rate image, despite the two not being equivalent
+#if defined(FRAGMENT_DENSITY_MAP)
+	#define RESULT_FORMAT float2
+#else
+	#define RESULT_FORMAT uint
+#endif
 
 #if defined(ARRAY_TARGET)
-RWTexture2DArray<uint>
+	#define RESULT_SWIZZLE xyz
 #else
-RWTexture2D<uint>
+	#define RESULT_SWIZZLE xy
+#endif
+
+#if defined(ARRAY_TARGET)
+RWTexture2DArray<RESULT_FORMAT>
+#else
+RWTexture2D<RESULT_FORMAT>
 #endif
 	Result;
 
@@ -91,14 +105,25 @@ float2 SphereDistort(float2 uv, float sphereRadius)
 	
 #define _DISTORT 0
 
-int2 GetShadingRate(float2 pixelCoords, float2 floatDim, int eyeIndex)
+float CeilOrFloor(bool _ceil, float a)
 {
+	return _ceil ? ceil(a) : floor(a);
+}
+
+int2 GetShadingRate(int2 pixelCoordsInt, float2 floatDim, int eyeIndex)
+{
+	float2 pixelCoords = (float2)pixelCoordsInt + float2(0.25f,0.25f);
 	float maxDim = max(floatDim.x, floatDim.y);
 	float minDim = min(floatDim.x, floatDim.y);
-	float2 eyeCenter = (eyeIndex == 0 ? _EyeCenters.xy : _EyeCenters.zw);
-	eyeCenter.x = ((eyeIndex == 0 ? ceil(eyeCenter.x * floatDim.x) : floor(eyeCenter.x * floatDim.x) )) / floatDim.x;
-	eyeCenter.y = ((eyeIndex == 0 ? ceil(eyeCenter.y * floatDim.y) : floor(eyeCenter.y * floatDim.y))) / floatDim.y;
-	float2 ndc = (2.0 * (pixelCoords - floatDim * eyeCenter)) / minDim;
+	float2 eyeCenter = eyeIndex == 0 ? _EyeCenters.xy + float2(-0.0,0): _EyeCenters.zw;
+	#if 1 //defined(SHADER_API_MOBILE)
+	eyeCenter.x = CeilOrFloor(eyeIndex == 0, eyeCenter.x * floatDim.x) + 0.5f;
+	eyeCenter.y = floor(eyeCenter.y * floatDim.y) + 0.5f;
+	#else
+	eyeCenter.x = eyeIndex == 0 ? ceil(eyeCenter.x * floatDim.x) : floor(eyeCenter.x * floatDim.x);
+	eyeCenter.y = eyeIndex == 0 ? ceil(eyeCenter.y * floatDim.y) : floor(eyeCenter.y * floatDim.y);
+	#endif
+	float2 ndc = (2.0 * (pixelCoords - eyeCenter)) / minDim;
 	float invDim = 1.0f / minDim;
 	float2 center = _EyeCenters.xy;
 
@@ -108,7 +133,7 @@ int2 GetShadingRate(float2 pixelCoords, float2 floatDim, int eyeIndex)
 	float power = 2;
 	float slope = 1.0 / 32.0;
 	
-	float scale = 0.8;
+	float scale = 0.6;
 #if _DISTORT == 0
 	power = 1.5;
 	float cutoff = FakeDistortCutoffDist(fdCoeff, power, slope);
@@ -190,18 +215,20 @@ void Populate2D(uint3 id : SV_DispatchThreadID)
 		return;
 	
 	float2 floatDim = float2(dim.xy);
-#if defined(SHADER_API_D3D11)
+#if defined(ARRAY_TARGET)
+	int2 rate = GetShadingRate(id.xy, floatDim, id.z);
+#else
 	int2 rate0 = GetShadingRate(id.xy, floatDim, 0);
 	int2 rate1 = GetShadingRate(id.xy, floatDim, 1);
 	int2 rate = min(rate0,rate1); 
-#else
-	int2 rate = GetShadingRate(id.xy, floatDim, id.z);
 #endif
 	
-#if ARRAY_TARGET
-	Result[id.xyz] = ((rate.x) << 2) | (rate.y);
-#else
-	Result[id.xy] = ((rate.x) << 2) | (rate.y);
-#endif
+	#if defined(FRAGMENT_DENSITY_MAP)
+		float2 result = 1.0f / float2(rate);
+	#else
+		uint result = (uint)( ((rate.x) << 2) | (rate.y) );
+	#endif
+
+	Result[id.RESULT_SWIZZLE] = result;
 		
 }

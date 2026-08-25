@@ -1,0 +1,232 @@
+#ifndef SLZ_LightingExtend
+#define SLZ_LightingExtend
+#warning USING LEGACY SHADERINCLUDE SLZExtensions.hlsl! DO NOT USE IN NEW SHADERS!
+
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/EncodeNormalsTexture.hlsl"
+
+#define M_PI  3.1415926535897932384626433832795		//Standard stored Pi.
+#define PI_x4 12.566370614359172953850573533118		//For inverse square.
+#define PI_R  0.31830988618f                        //Reciprocal
+#define PI_R_REAL half(0.318309886183790672)
+
+#if defined(_BRDFMAP)
+TEXTURE2D(g_tBRDFMap); //Force sampler state to avoid wrapping issues
+#endif
+
+// Must be defined by shader to return the SSS color material property
+half4 GetSSSColor();
+
+//Extention Libary to add into pipeline. Should make future package upgrading simpler.
+
+
+//o.vIndirectSpecular.rgb += BakeryDirectionalLightmapSpecular(vLightmapUV.xy, vNormalWs.xyz, normalize(vPositionWs.xyz - _WorldSpaceCameraPos), 1-vRoughness.x) * o.vIndirectDiffuse.rgb;
+
+// float BakeryDirectionalLightmapSpecular(float2 lmUV, float3 normalWorld, float3 viewDir, float smoothness)
+// {
+// 	float3 dominantDir = UNITY_SAMPLE_TEX2D_SAMPLER(unity_LightmapInd, unity_Lightmap, lmUV).xyz * 2 - 1;
+// 	half3 halfDir = Unity_SafeNormalize(normalize(dominantDir) - viewDir);
+// 	half nh = saturate(dot(normalWorld, halfDir));
+// 	half perceptualRoughness = SmoothnessToPerceptualRoughness(smoothness);
+// 	half roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
+// 	half spec = GGXTerm(nh, roughness);
+// 	return spec;
+// }
+
+
+
+//#if defined(_FLUORESCENCE)			
+half3 FluorescenceEmission(half4 lightingTerms, half4 Absorbance, half4 Fluorescence ){
+//Using alpha ch as UV color
+    
+// float3 LitFluorescence =  float3(
+// 					/*RED*/		max(max(lightingTerms.vDiffuse.r + lightingTerms.vIndirectDiffuse.r , max( lightingTerms.vDiffuse.g + lightingTerms.vIndirectDiffuse.g, lightingTerms.vDiffuse.b + lightingTerms.vIndirectDiffuse.b)), lightingTerms.vDiffuse.a),
+// 					/*GREEN*/	max((max(lightingTerms.vDiffuse.g + lightingTerms.vIndirectDiffuse.g, lightingTerms.vDiffuse.b + lightingTerms.vIndirectDiffuse.b)) , lightingTerms.vDiffuse.a),
+// 					/*BLUE*/	max(lightingTerms.vDiffuse.b + lightingTerms.vIndirectDiffuse.b , lightingTerms.vDiffuse.a)
+// 								) 
+// 								* vFluorescence.rgb ;
+// o.vColor.rgb = max(o.vColor.rgb, LitFluorescence.rgb);
+
+half4 FluorescenceAbsorb = lightingTerms * Absorbance;					
+
+//Combine each color from high to low frequency to account for dual-excitation
+half Absorbed_B = FluorescenceAbsorb.b + FluorescenceAbsorb.a;
+half Absorbed_G = Absorbed_B + FluorescenceAbsorb.g;
+half Absorbed_R = Absorbed_G + FluorescenceAbsorb.r;
+
+half3 LitFluorescence =  half3(Absorbed_R, Absorbed_G, Absorbed_B) * Fluorescence.rgb ;
+return LitFluorescence.rgb;					
+}
+//#endif
+
+void BlendFluorescence(inout half3 Diffuse, half3 LightColors, BRDFData brdfData )
+{
+    //Mainly used to shush an implicit casting complier error
+    #if defined(_FLUORESCENCE)
+    BlendFluorescence(Diffuse,half4(LightColors,0),brdfData);
+    #endif
+}
+void BlendFluorescence(inout half3 Diffuse, half4 LightColors, BRDFData brdfData )
+{
+    #if defined(_FLUORESCENCE)
+    Diffuse = max(Diffuse, FluorescenceEmission(LightColors, brdfData.absorbance, brdfData.fluorescence ));
+    #endif
+}
+void BlendFluorescence(inout half3 Diffuse, half4 LightColors, half4 absorbance, half4 fluorescence)
+{
+    #if defined(_FLUORESCENCE)
+    Diffuse = max(Diffuse, FluorescenceEmission(LightColors, absorbance, fluorescence ));
+    #endif
+}
+
+half GGXTerm (half3 N, half3 H, half NdotH, half roughness)
+{
+     //float d = (NdotH * a2 - NdotH) * NdotH + 1.0f; // 2 mad
+    half3 NxH = cross(N,H);
+	half NxH2 = dot(NxH, NxH);
+    half a = NdotH * roughness;
+    half d = roughness / max(a * a + NxH2, HALF_MIN);
+    half d2 = (d * d * PI_R_REAL);
+    return d2; // This function is not intended to be running on Mobile,
+                                                // therefore epsilon is smaller than what can be represented by half
+}
+
+// float2 GetShadowOffsets( float3 N, float3 L )
+// {
+//     // From: Ignacio Casta�o http://the-witness.net/news/2013/09/shadow-mapping-summary-part-1/
+//     float cos_alpha = saturate( dot( N, L ) );
+//     float offset_scale_N = sqrt( 1 - ( cos_alpha * cos_alpha ) ); // sin( acos( L�N ) )
+//     float offset_scale_L = offset_scale_N / cos_alpha; // tan( acos( L�N ) )
+//     return float2( offset_scale_N, min( 2.0, offset_scale_L ) );
+// }
+
+////Baked Specular using directional baked maps
+half DirectionalLightmapSpecular(float2 lightmapUV, float3 normalWorld, float3 viewDir, float smoothness)
+{
+	float3 dominantDir = LOAD_TEXTURE2D(unity_LightmapInd, lightmapUV).xyz * 2 - 1;
+	half3 halfDir = normalize(normalize(dominantDir) - viewDir);
+	half nh = saturate(dot(normalWorld, halfDir));
+	half perceptualRoughness = 1-smoothness;
+	half roughness = perceptualRoughness * perceptualRoughness;
+	half spec = GGXTerm(normalWorld, halfDir, nh, roughness);
+	return clamp(spec, 0, 100); // can go NaN or Inf if dominant direction is length 0
+ //   return 1;
+}
+//Baked Specular using directional baked maps
+half DirectionalLightmapSpecular(float4 direction, float3 normalWorld, float3 viewDir, float smoothness)
+{
+    float3 dominantDir = direction.xyz * 2 - 1;
+    half3 halfDir = normalize(normalize(dominantDir) + viewDir);
+    half nh = saturate(dot(normalWorld, halfDir));
+    half perceptualRoughness = 1 - smoothness;
+    half roughness = perceptualRoughness * perceptualRoughness;
+    half spec = GGXTerm(normalWorld, halfDir, nh, roughness);
+	return clamp(spec, 0, 100); // can go NaN or Inf if dominant direction is length 0
+    //   return 1;
+}
+
+//uniform half4 GradientFogArray[(int)32.0];
+//
+//float FogGradient(){
+//
+//
+//}
+
+//half4 FogLinearInterpolation(half ramp)
+//{				
+//	half refactoredramp = clamp(ramp * 32, 0, 31) ;	
+//	half4 interpolated =  lerp(GradientFogArray[refactoredramp],GradientFogArray[refactoredramp+1], frac(refactoredramp) ) ;
+//	return interpolated;
+//}
+//Making a copy from the core to avoid sampling the directional map twice
+ half4 SampleDirectionalLightmapSLZ(TEXTURE2D_PARAM(lightmapTex, lightmapSampler), TEXTURE2D_PARAM(lightmapDirTex, lightmapDirSampler), float2 uv, float4 transform, float3 normalWS, float smoothness, float3 viewDirWS, bool encodedLightmap, real4 decodeInstructions)
+ {
+     // In directional mode Enlighten bakes dominant light direction
+     // in a way, that using it for half Lambert and then dividing by a "rebalancing coefficient"
+     // gives a result close to plain diffuse response lightmaps, but normalmapped.
+
+     // Note that dir is not unit length on purpose. Its length is "directionality", like
+     // for the directional specular lightmaps.
+
+     // transform is scale and bias
+     uv = uv * transform.xy + transform.zw;
+
+     half4 direction = SAMPLE_TEXTURE2D(lightmapDirTex, lightmapDirSampler, uv);
+     // Remark: baked lightmap is RGBM for now, dynamic lightmap is RGB9E5
+     //real3 illuminance = real3(0.0, 0.0, 0.0);
+     //if (encodedLightmap)
+     //{
+         half4 encodedIlluminance = SAMPLE_TEXTURE2D(lightmapTex, lightmapSampler, uv).rgba;
+     half3 illuminance = encodedLightmap ? DecodeLightmap(encodedIlluminance, decodeInstructions) : encodedIlluminance.rgb;
+     //}
+     //else
+     //{
+     //    illuminance = SAMPLE_TEXTURE2D(lightmapTex, lightmapSampler, uv).rgb;
+     //}
+     half halfLambert = dot(normalWS, direction.xyz - half(0.5)) + half(0.5);
+     half3 IndirectDiffuse = max(half(0), illuminance * halfLambert / max(half(1e-4), direction.w));
+     half IndirectSpecular = DirectionalLightmapSpecular(direction, normalWS, viewDirWS, smoothness) ;
+     return half4(IndirectDiffuse.xyz, IndirectSpecular) ;
+  //   return 0;
+ }
+
+// Assuming occlusion from baked lighting. Not necessary accurate but removes glowing in shaded occluded areas
+half3 BakedLightingToSpecularOcclusion(half3 diffuse)
+{
+    return saturate(1.0h - exp2(diffuse * -40.0h));
+    //return saturate(diffuse*PI_x4);
+}	
+
+half BakedLightingToSpecularOcclusionGray(half3 diffuse)
+{
+    return saturate(half(1.0h) - exp2(dot(diffuse, half3(0.2126729, 0.7151522, 0.0721750)) * half(-40.0h)));
+    //return saturate(diffuse*PI_x4);
+}	
+
+///////////////////////////////////////////////////////////////////////////////
+//                          Dithering                                        //
+///////////////////////////////////////////////////////////////////////////////
+
+//#define NoisePixels 64
+//#define NoiseArraySize 64
+//uniform  TEXTURE2D_ARRAY(_SLZ_DitherTex2D);
+//TEXTURE2D_ARRAY_PARAM(_SLZ_DitherTex2D, _SLZ_DitherTex2D_sampler);
+//TEXTURE2D_ARRAY_ARGS(_SLZ_DitherTex2D, _SLZ_DitherTex2D_sampler)    
+//TEXTURE2D_ARRAY(_SLZ_DitherTex2D);       SAMPLER(_SLZ_DitherTex2D_sampler);
+
+
+
+
+// uniform int _SLZ_TexSel;
+
+
+// float4 DitherTex(float2 UV)
+// {
+//  return SAMPLE_TEXTURE2D_ARRAY(_SLZ_DitherTex2D, _SLZ_DitherTex2D_sampler, UV.xy, _SLZ_TexSel );
+// }
+
+// float4 DitherTex(float2 UV, int FrameOffset)
+// {
+//     int frame = (_SLZ_TexSel + FrameOffset) ;
+//     if (frame > NoiseArraySize ) frame = FrameOffset;
+//  return SAMPLE_TEXTURE2D_ARRAY(_SLZ_DitherTex2D, _SLZ_DitherTex2D_sampler, UV.xy, _SLZ_TexSel );
+// }
+
+
+// float2 ScreenSpaceNoiseUVs(float4 projPos){
+
+//  //	ComputeScreenPos(vertex_out);
+//  //   projPos.z = -UnityObjectToViewPos(vertex_in).z
+
+//  return	( (projPos.xy / projPos.w) *_ScreenParams.xy /NoisePixels).xy ;
+
+//  }
+
+//  float4 DepthFade_VS_ComputeProjPos(float4 vertex_in, float4 vertex_out)
+// {
+//     float4 projPos = ComputeScreenPos(vertex_out);
+//     //projPos.z = -UnityObjectToViewPos(vertex_in).z; // = COMPUTE_EYEDEPTH
+//     return projPos;
+// }
+
+
+#endif

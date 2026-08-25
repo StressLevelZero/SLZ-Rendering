@@ -5,6 +5,7 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/BRDF.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/FGD.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
 
 namespace SLZ
 {
@@ -75,7 +76,8 @@ namespace SLZ
         half4 AlbedoAlpha()
         {
             #ifdef PACK_COLOR_UNORM4X8
-                return VkSPIRV::UnpackUNorm4x8(packedAlbedoAlpha);
+                half4 unpacked = VkSPIRV::UnpackUNorm4x8(packedAlbedoAlpha);
+                return half4(unpacked.rgb * unpacked.rgb, unpacked.a);
             #else
                 return half4(m_albedo, m_alpha);
             #endif
@@ -84,7 +86,7 @@ namespace SLZ
         void SetAlbedoAlpha(half3 albedo, half alpha)
         {
             #ifdef PACK_COLOR_UNORM4X8
-                packedAlbedoAlpha = VkSPIRV::PackUNorm4x8(half4(albedo, alpha));
+                packedAlbedoAlpha = VkSPIRV::PackUNorm4x8(half4(sqrt(albedo), alpha));
             #else
                 m_albedo = albedo;
                 m_alpha = alpha;
@@ -94,7 +96,8 @@ namespace SLZ
         half3 SpecularF0()
         {
             #ifdef PACK_COLOR_UNORM4X8
-                return VkSPIRV::UnpackUNorm4x8(packedSpecularF0Roughness).xyz;
+                half4 unpacked = VkSPIRV::UnpackUNorm4x8(packedSpecularF0Roughness);
+                return unpacked.xyz * unpacked.xyz;
             #else
                 return m_specularF0;
             #endif
@@ -114,10 +117,10 @@ namespace SLZ
             #ifdef PACK_COLOR_UNORM4X8
                 half4 albedoAlpha = AlbedoAlpha();
                 half3 specularF0 = lerp(half3(kDielectricSpec.xyz), albedoAlpha.rgb, metallic);
-                packedSpecularF0Roughness = VkSPIRV::PackUNorm4x8(half4(specularF0, roughness));
+                packedSpecularF0Roughness = VkSPIRV::PackUNorm4x8(half4(sqrt(specularF0), roughness));
                 SetAlbedoAlpha(albedoAlpha.rgb * (half(1.0) - metallic), albedoAlpha.a);
             #else
-                m_specularF0 = lerp(half3(kDielectricSpec.xyz), albedo, metallic);
+                m_specularF0 = lerp(half3(kDielectricSpec.xyz), m_albedo, metallic);
                 m_albedo *= half(1.0) - metallic;
                 m_roughness = roughness;
             #endif
@@ -126,7 +129,7 @@ namespace SLZ
         void SetSpecularF0Roughness(half3 specularF0, half roughness)
         {
             #ifdef PACK_COLOR_UNORM4X8
-                packedSpecularF0Roughness = VkSPIRV::PackUNorm4x8(half4(specularF0, roughness));
+                packedSpecularF0Roughness = VkSPIRV::PackUNorm4x8(half4(sqrt(specularF0), roughness));
             #else
                 m_specularF0 = specularF0;
                 m_roughness = roughness;
@@ -343,6 +346,28 @@ namespace SLZ
         return result;
     }
 
+    /** Copy of GetMainLight from RealtimeLights.hlsl that takes worldspace position and shadowCoord instead of URP lit's entire inputData struct
+     *  
+     * @param shadowCoord   Shadow coordinates
+     * @param shadowMask    Shadow mask value from probes if LIGHTMAP_SHADOW_MIXING is enabled
+     * @param aoFactor      Struct containing screenspace ambient occlusion if present and the ambient occlusion texture value.
+     * 
+     * @returns             Light struct with the information for the main directional light
+     */
+    Light GetMainLight(float3 positionWS, float4 shadowCoord, half4 shadowMask, AmbientOcclusionFactor aoFactor)
+    {
+        Light light = GetMainLight(shadowCoord, positionWS, shadowMask);
+
+        #if defined(_SCREEN_SPACE_OCCLUSION) && !defined(_SURFACE_TYPE_TRANSPARENT)
+        if (IsLightingFeatureEnabled(DEBUGLIGHTINGFEATUREFLAGS_AMBIENT_OCCLUSION))
+        {
+            light.color *= aoFactor.directAmbientOcclusion;
+        }
+        #endif
+
+        return light;
+    }
+
     /**
      * Get a fake point source direction from diffuse GI spherical harmonics 
      *
@@ -394,7 +419,7 @@ namespace SLZ
         }
 
         // Normally, unity "decodes" lightmaps because it assumes support for ancient graphics API's with no native HDR image format (gles2) where it is stored as shared exponent floats encoded in a fixed point texture, and must be decoded manually
-        // This is completely useless and irrelevant. Do not waste instructions on this!
+        // This is no longer relevant for any hardware made in the past decade. Don't waste instructions on this!
         // half4 decodeInstructions = half4(LIGHTMAP_HDR_MULTIPLIER, LIGHTMAP_HDR_EXPONENT, 0.0, 0.0);
         // output.rgb = DecodeLightmap(output, decodeInstructions);
 
@@ -428,7 +453,7 @@ namespace SLZ
      *
      * @returns  The lambert diffuse L1 spherical harmonic irradiance for the given normal direction
      */
-    half3 DecodeDirLightmapMonoSh(const half3 normalWS, const half3 baseLightmap, const half3 dirLightmap)
+    half3 DecodeDirLmMonoShSimple(const half3 normalWS, const half3 baseLightmap, const half3 dirLightmap)
     {
         half3 L1Mono = 4.0 * dirLightmap - 2.0;
         return baseLightmap * (half(1.0) + dot(normalWS, L1Mono));
@@ -447,7 +472,7 @@ namespace SLZ
     half3 ApplyDirLightmap(const half3 normalWS, const half3 baseLightmap, const half4 dirLightmap)
     {
         #if defined(DIRLIGHTMAP_MONOSH)
-            return DecodeDirLightmapMonoSh(normalWS, baseLightmap, dirLightmap);
+            return DecodeDirLmMonoShSimple(normalWS, baseLightmap, dirLightmap);
         #else
             return ApplyDirLightmapHalfLambert(normalWS, baseLightmap, dirLightmap);
         #endif
@@ -560,17 +585,17 @@ namespace SLZ
             half3 fakeLightDirection = ShFakeSpecularDirection(sh);
             half3 fakeSpecular = SpecularModelKSK::PunctualSpecular(md, ps, fakeLightDirection, fgd);
             half fakeFalloff = GiFakedSpecularFalloff(dot(md.normal, fakeLightDirection));
-            return ShDiffuse * ps.SpecularF0() * fakeSpecular * fakeFalloff;
+            return ShDiffuse * ps.SpecularF0() * fakeSpecular * fakeFalloff * SH_L1_IRR_TO_RAD;
         }
 
-        static half3 LightmapFakeSpecular(LightMeshData md, LightPhysData ps, half3 lightmapRadiance, half4 dirLightmap, half2 fgd)
+        static half3 LightmapFakeSpecular(LightMeshData md, LightPhysData ps, half3 lightmapIrradiance, half4 dirLightmap, half2 fgd)
         {
             half4 fakeLightDirStrength = LightmapFakeSpecStrengthDir(dirLightmap);
             half3 fakeSpecular = SpecularModelKSK::PunctualSpecular(md, ps, fakeLightDirStrength.xyz, fgd);
 
             //half fakeFalloff = GiFakedSpecularFalloff(dot(md.normal, fakeLightDirection));
-            half lightmapIrradiance = half(TWO_PI) * lightmapRadiance; // Lambert 1/2pi factor baked into lightmap directly
-            return max(half(0), half(TWO_PI) * lightmapRadiance * ps.SpecularF0() * fakeSpecular * fakeLightDirStrength.w);
+            half lightmapRadiance = half(TWO_PI) * lightmapIrradiance; // Lambert 1/2pi factor baked into lightmap directly
+            return max(half(0), half(TWO_PI) * lightmapIrradiance * ps.SpecularF0() * fakeSpecular * fakeLightDirStrength.w);
         }
     };
 
@@ -589,6 +614,8 @@ namespace SLZ
             half3 specular = ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.Roughness(), ps.SpecularF0());
             return PunctualSpecularMultiscatterComp(specular, ps.SpecularF0(), fgd);
         }
+
+        
         static half3 IblSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir, half2 fgd)
         {
             return ProbeIblSpecularMultiscatterFGD(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd)
@@ -602,6 +629,16 @@ namespace SLZ
             half3 fakeSpecular = SpecularModelGGX::PunctualSpecular(md, ps, fakeLightDirection, fgd);
             half fakeFalloff = GiFakedSpecularFalloff(dot(md.normal, fakeLightDirection));
             return ShDiffuse * ps.SpecularF0() * fakeSpecular * fakeFalloff;
+        }
+
+        static half3 LightmapFakeSpecular(LightMeshData md, LightPhysData ps, half3 lightmapRadiance, half4 dirLightmap, half2 fgd)
+        {
+            half4 fakeLightDirStrength = LightmapFakeSpecStrengthDir(dirLightmap);
+            half3 fakeSpecular = SpecularModelGGX::PunctualSpecular(md, ps, fakeLightDirStrength.xyz, fgd);
+
+            //half fakeFalloff = GiFakedSpecularFalloff(dot(md.normal, fakeLightDirection));
+            half lightmapIrradiance = half(TWO_PI) * lightmapRadiance; // Lambert 1/2pi factor baked into lightmap directly
+            return max(half(0), half(TWO_PI) * lightmapRadiance * ps.SpecularF0() * fakeSpecular * fakeLightDirStrength.w);
         }
     };
 
@@ -637,6 +674,16 @@ namespace SLZ
             half3 fakeSpecular = SpecularModelAniso::PunctualSpecular(md, ps, fakeLightDirection, fgd);
             half fakeFalloff = GiFakedSpecularFalloff(dot(md.normal, fakeLightDirection));
             return ShDiffuse * ps.SpecularF0() * fakeSpecular * fakeFalloff;
+        }
+
+        static half3 LightmapFakeSpecular(LightMeshDataAniso md, LightPhysDataAniso ps, half3 lightmapRadiance, half4 dirLightmap, half2 fgd)
+        {
+            half4 fakeLightDirStrength = LightmapFakeSpecStrengthDir(dirLightmap);
+            half3 fakeSpecular = SpecularModelGGX::PunctualSpecular(md, ps, fakeLightDirStrength.xyz, fgd);
+
+            half fakeFalloff = GiFakedSpecularFalloff(dot(md.normal, fakeLightDirStrength.xyz));
+            half lightmapIrradiance = half(TWO_PI) * lightmapRadiance; // Lambert 1/2pi factor baked into lightmap directly
+            return max(half(0), lightmapIrradiance * ps.SpecularF0() * fakeSpecular * fakeLightDirStrength.w * fakeFalloff);
         }
     };
 
