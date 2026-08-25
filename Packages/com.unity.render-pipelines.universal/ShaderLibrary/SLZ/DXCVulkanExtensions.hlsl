@@ -181,7 +181,7 @@ uint DeltaClockTime(uint start, uint end)
 void RequestFragmentDensityEXT() { }
 
 
-static min16uint2 s_FragSizeExt = min16uint2(0, 0);
+static min16uint2 s_FragSizeExt = min16uint2(1, 1);
 #define SLZ_FRAG_SIZE VkSPIRV::s_FragSizeExt
 
 #if defined(INLINE_SPIRV)
@@ -237,8 +237,8 @@ SMulResult OpSMulExtended(uint a, uint b)
 }
 #else
 
-#define OpUMulExtended(a,b) UNITY_PREPROCESSOR_SKIP(PREPROCESSOR_HASH, error OpUMulExtended only supported on Vulkan, no HLSL equivalent)
-#define OpSMulExtended(a,b) UNITY_PREPROCESSOR_SKIP(PREPROCESSOR_HASH, error OpSMulExtended only supported on Vulkan, no HLSL equivalent)
+#define OpUMulExtended(a,b) UNITY_PREPROCESSOR_SKIP(PREPROCESSOR_HASH, error OpUMulExtended only supported on Vulkan no HLSL equivalent)
+#define OpSMulExtended(a,b) UNITY_PREPROCESSOR_SKIP(PREPROCESSOR_HASH, error OpSMulExtended only supported on Vulkan no HLSL equivalent)
 
 #endif //defined(INLINE_SPIRV)
 
