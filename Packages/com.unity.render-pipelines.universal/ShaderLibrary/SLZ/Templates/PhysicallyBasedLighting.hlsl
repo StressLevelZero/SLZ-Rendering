@@ -39,7 +39,7 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
     half4 shadowMask = (half4)0;
 
     // Sample Lightmap or Light Probes
-    #if defined(LIGHTMAP_ON)
+    #if defined(LIGHTMAP_ON) || defined(DIRLIGHTMAP_COMBINED)
         const bool lmBicubicSample = 
         #if defined(LIGHTMAP_BICUBIC_SAMPLING)
             true;
@@ -60,16 +60,32 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
         #if defined(DIRLIGHTMAP_COMBINED)
             specular += specularModel.LightmapFakeSpecular(meshData, physData, diffuse, dirLmTexel, FGD);
         #endif
-    #else
+    #else // Light probes
         ShCoefficients shCoeff = SphericalHarmonicCoefficients(meshData.position, meshData.normal, meshData.viewDir, 0);
         #if defined(SHADOWS_SHADOWMASK)
-        shadowMask = shCoeff.probeOcclusion;
+            shadowMask = shCoeff.probeOcclusion;
         #endif
-        diffuse = diffuseModel.ShDiffuse(meshData, physData, shCoeff);
+        diffuse += diffuseModel.ShDiffuse(meshData, physData, shCoeff);
         specular += specularModel.ShFakeSpecular(meshData, physData, shCoeff, diffuse, FGD);
-        
     #endif
 
+    /// Main Light
+
+    #if defined(_LIGHT_LAYERS)
+        uint meshRenderingLayers = GetMeshRenderingLayer();
+    #endif
+
+    Light mainLight = GetMainLight(meshData.shadowCoord, meshData.position, shadowMask);
+
+    #if defined(_LIGHT_LAYERS)
+        if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))
+    #endif
+    if (any(mainLight.color > half(0.0)))
+    {
+        diffuse += diffuseModel.PunctualDiffuse(meshData, physData, mainLight.direction, float4(mainLight.color, 0));
+    }
+
+    /// Additional Lights
 
     return half4(diffuse * physData.AlbedoAlpha().rgb + specular, 1);
 }

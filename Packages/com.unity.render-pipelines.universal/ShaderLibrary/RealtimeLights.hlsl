@@ -18,11 +18,16 @@ struct Light
     uint    layerMask;
 };
 
+/// SLZ MODIFIED - Light alpha now stores UV, not subtractive flag
+/*
 #if USE_CLUSTER_LIGHT_LOOP && defined(LIGHTMAP_ON) && defined(LIGHTMAP_SHADOW_MIXING)
+*/
+#if 0
 #define CLUSTER_LIGHT_LOOP_SUBTRACTIVE_LIGHT_CHECK if (_AdditionalLightsColor[lightIndex].a > 0.0h) continue;
 #else
 #define CLUSTER_LIGHT_LOOP_SUBTRACTIVE_LIGHT_CHECK
 #endif
+/// END SLZ MODIFIED
 
 #if USE_CLUSTER_LIGHT_LOOP
     #define LIGHT_LOOP_BEGIN(lightCount) { \
