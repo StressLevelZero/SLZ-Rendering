@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 
 namespace SLZ.SLZEditorTools
@@ -13,6 +14,8 @@ namespace SLZ.SLZEditorTools
         public static readonly string packageName = "com.stresslevelzero.urpconfig";
         public static readonly string projectSymbolsAssetPath = "Assets/Settings/ProjectShaderSymbols.asset";
         public static readonly string projectSymbolsInclPath = "Packages/com.stresslevelzero.urpconfig/include/ProjectSymbols.hlsl";
+        public static readonly string dxcUpdateStateInclPath = "Packages/com.stresslevelzero.urpconfig/include/DXCUpdateState.hlsl";
+        public static readonly string dxcUpdateStateSrcPath  = "Packages/com.unity.render-pipelines.universal/Editor/URPConfig/package~/com.stresslevelzero.urpconfig/include/DXCUpdateState.hlsl";
         static string m_pkgPath;
         static bool m_initialized = false;
         public static string packagePath
@@ -41,7 +44,7 @@ namespace SLZ.SLZEditorTools
             {
                 try
                 {
-                    string localPackage = Path.GetFullPath("Packages/com.unity.render-pipelines.universal/Editor/SLZ/URPConfig/package~/com.stresslevelzero.urpconfig");
+                    string localPackage = Path.GetFullPath("Packages/com.unity.render-pipelines.universal/Editor/URPConfig/package~/com.stresslevelzero.urpconfig");
                     DirectoryInfo localPkgInfo = new DirectoryInfo(localPackage);
                     DirectoryInfo realPkgInfo = new DirectoryInfo(packagePath);
                     Debug.Log($"Cloning:\n{localPkgInfo.FullName}\n{realPkgInfo.FullName}");
@@ -55,8 +58,20 @@ namespace SLZ.SLZEditorTools
                 }
             }
 
+
             ProjectShaderSymbols sd = AssetDatabase.LoadAssetAtPath<ProjectShaderSymbols>(projectSymbolsAssetPath);
-            if (sd == null)
+            if (File.Exists(Path.GetFullPath(projectSymbolsAssetPath)))
+            {
+                if (sd == null)
+                {
+                    sd = (ProjectShaderSymbols)(InternalEditorUtility.LoadSerializedFileAndForget(projectSymbolsAssetPath)[0]);
+                    if (sd == null)
+                    {
+                        throw new FileNotFoundException("CRITICAL ERROR: Failed to open ProjectShaderSymbols with the asset database or InternalEditorUtility.LoadSerializedFileAndForget! Shader symbols will not be regenerated!!!!!");
+                    }
+                }
+            }
+            else
             {
                 sd = ScriptableObject.CreateInstance<ProjectShaderSymbols>();
                 if (!Directory.Exists("Assets/Settings"))
