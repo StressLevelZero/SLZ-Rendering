@@ -14,6 +14,8 @@ namespace SLZRendering.Runtime
         {
             float scale;
             float power;
+            int2 eyeCenterLeft;
+            int2 eyeCenterRight;
         }
         public FoveationSettings settings;
         private int m_ShadingRateImageID;
