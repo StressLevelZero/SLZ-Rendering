@@ -183,7 +183,9 @@ namespace UnityEngine.Rendering.Universal
 
         StencilCrossFadeRenderPass m_StencilCrossFadeRenderPass;
 
+/// SLZ MODIFIED
         PopulateShadingRatePass m_PopulateShadingRatePass;
+/// END SLZ MODIFIED
 
         RTHandle m_TargetColorHandle;
         RTHandle m_TargetDepthHandle;
@@ -350,6 +352,7 @@ namespace UnityEngine.Rendering.Universal
             this.m_ShadowmapStencil = data.shadowmapStencil;
             this.postProcessEnabled = data.postProcessData != null;
             this.name = data.name;
+
 
             UpdateSupportedRenderingFeatures();
 
@@ -873,6 +876,12 @@ namespace UnityEngine.Rendering.Universal
         /// <returns>Return true if pipeline needs to render to a intermediate render texture.</returns>
         static bool RequiresIntermediateColorTexture(UniversalCameraData cameraData, in RenderPassInputSummary renderPassInputs, bool usesDeferredLighting, bool applyPostProcessing)
         {
+            #if UNITY_ANDROID
+            if (cameraData.renderType == CameraRenderType.Base && !cameraData.resolveFinalTarget)
+            {
+                Debug.LogError($"Rendering into an intermediate texture!:\ncameraData.renderType:{cameraData.renderType}\ncameraData.resolveFinalTarget:{cameraData.resolveFinalTarget}");
+            }
+            #endif
             // When rendering a camera stack we always create an intermediate render texture to composite camera results.
             // We create it upon rendering the Base camera.
             if (cameraData.renderType == CameraRenderType.Base && !cameraData.resolveFinalTarget)
@@ -915,8 +924,19 @@ namespace UnityEngine.Rendering.Universal
             if (isOffscreenRender)
                 return requiresBlitForOffscreenCamera;
 
+            /*
             return requiresBlitForOffscreenCamera || isScaledRender || isScalableBufferManagerUsed || cameraData.isHdrEnabled ||
                 !isCompatibleBackbufferTextureDimension || isCapturing || cameraData.requireSrgbConversion;
+            */
+            bool result = requiresBlitForOffscreenCamera || isScaledRender || isScalableBufferManagerUsed || cameraData.isHdrEnabled ||
+                !isCompatibleBackbufferTextureDimension || isCapturing || cameraData.requireSrgbConversion;
+            #if UNITY_ANDROID
+            if (result == true)
+            {
+                Debug.LogError($"Rendering into an intermediate texture!:\nrequiresBlitForOffscreenCamera:{requiresBlitForOffscreenCamera}\nisScaledRender:{isScaledRender}\nisScalableBufferManagerUsed:{isScalableBufferManagerUsed}\nisHdrEnabled:{cameraData.isHdrEnabled}\nisCompatibleBackbufferTextureDimension:{isCompatibleBackbufferTextureDimension}\nisCapturing:{isCapturing}\nrequireSrgbConversion:{cameraData.requireSrgbConversion}");
+            }
+            #endif
+            return result;
         }
 
         // There is two ways to control the dynamic resolution in URP:
