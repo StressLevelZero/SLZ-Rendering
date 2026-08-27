@@ -156,7 +156,7 @@ half DirectionalLightmapSpecular(float4 direction, float3 normalWorld, float3 vi
      //if (encodedLightmap)
      //{
          half4 encodedIlluminance = SAMPLE_TEXTURE2D(lightmapTex, lightmapSampler, uv).rgba;
-     half3 illuminance = encodedLightmap ? DecodeLightmap(encodedIlluminance, decodeInstructions) : encodedIlluminance.rgb;
+     half3 illuminance = encodedIlluminance.rgb;
      //}
      //else
      //{
