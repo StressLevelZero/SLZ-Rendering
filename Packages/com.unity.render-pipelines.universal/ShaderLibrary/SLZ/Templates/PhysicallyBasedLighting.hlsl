@@ -66,7 +66,7 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
             shadowMask = shCoeff.probeOcclusion;
         #endif
         diffuse += diffuseModel.ShDiffuse(meshData, physData, shCoeff);
-        specular += specularModel.ShFakeSpecular(meshData, physData, shCoeff, diffuse, FGD);
+        //specular += specularModel.ShFakeSpecular(meshData, physData, shCoeff, diffuse, FGD);
     #endif
 
     /// Main Light
