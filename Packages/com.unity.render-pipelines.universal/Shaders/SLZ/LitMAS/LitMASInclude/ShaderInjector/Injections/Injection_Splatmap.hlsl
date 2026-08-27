@@ -11,7 +11,7 @@
 
 
 //#!INJECT_BEGIN INCLUDES 0
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZTriplanar.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/SLZTriplanar.hlsl"
 //#!INJECT_END
 
 //#!INJECT_BEGIN MATERIAL_CBUFFER 0

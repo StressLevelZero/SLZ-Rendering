@@ -148,4 +148,11 @@ float3 shadergraph_RendererBoundsWS_Max()
 // Always include last to avoid double macros
 #include "Packages/com.unity.shadergraph/ShaderGraphLibrary/Functions.hlsl"
 
+/// SLZ MODIFIED - Temp Fix for legacy ASE shaders
+#if defined(ASE_SRP_VERSION)
+#warning TODO: REMOVE TEMP PATCH IN ShaderGraphFunctions.hlsl
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/EncodeNormalsTexture.hlsl"
+#endif
+/// END SLZ MODIFIED
+
 #endif // UNITY_GRAPHFUNCTIONS_LW_INCLUDED

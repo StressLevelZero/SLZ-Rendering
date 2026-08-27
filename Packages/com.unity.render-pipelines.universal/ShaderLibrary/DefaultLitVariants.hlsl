@@ -1,6 +1,7 @@
 #pragma once
 #warning USING LEGACY SHADERINCLUDE DefaultLitVariants.hlsl! DO NOT USE IN NEW SHADERS!
-
+#define _DISABLE_VOLUMETRICS
+#warning Volumetrics disabled!
 #if !defined(_DISABLE_VOLUMETRICS)
 	#if defined(SHADER_API_MOBILE)
 		#pragma multi_compile_fragment _ _VOLUMETRICS_ENABLED
@@ -12,7 +13,7 @@
 		#endif
 	#endif
 #endif
-
+#define USE_DYNAMIC_BRANCH_FOG_KEYWORD 1
 //#pragma multi_compile_fragment _ _VOLUMETRICS_ENABLED
 //#pragma multi_compile_fog
 //#pragma skip_variants FOG_LINEAR FOG_EXP

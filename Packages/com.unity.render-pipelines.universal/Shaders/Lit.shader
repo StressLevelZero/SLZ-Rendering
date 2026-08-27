@@ -110,6 +110,13 @@ Shader "Universal Render Pipeline/Lit"
         }
         LOD 300
 
+        /// SLZ MODIFIED - Disable Lit entirely, too bloated
+        HLSLINCLUDE
+        #warning URP Lit disabled, please use LitMAS
+        #pragma exclude_renderers vulkan d3d11
+        ENDHLSL
+        /// END SLZ MODIFIED
+
         // ------------------------------------------------------------------
         //  Forward pass. Shades all light in a single pass. GI + emission + Fog
         Pass

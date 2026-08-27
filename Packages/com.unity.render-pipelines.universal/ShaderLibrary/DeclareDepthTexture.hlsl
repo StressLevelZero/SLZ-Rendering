@@ -27,4 +27,11 @@ float LoadSceneDepth(uint2 pixelCoords)
 {
     return LOAD_TEXTURE2D_X(_CameraDepthTexture, pixelCoords).r;
 }
+
+/// SLZ MODIFIED - Fix Legacy ASE shaders redefining this
+#if defined(LEGACY_SHADER) && defined(ASE_SRP_VERSION)
+#define _CameraDepthTexture_TexelSize _CameraDepthTexture_TexelSize_FIX
+#endif
+/// END SLZ MODIFIED
+
 #endif

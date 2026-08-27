@@ -87,6 +87,14 @@ Shader "Universal Render Pipeline/Complex Lit"
         }
         LOD 300
 
+        /// SLZ MODIFIED - Disable Complex Lit entirely, too bloated
+        HLSLINCLUDE
+        #warning URP Complex Lit disabled, too many variants
+        #pragma exclude_renderers vulkan d3d11
+        ENDHLSL
+        /// END SLZ MODIFIED
+
+
         // ------------------------------------------------------------------
         // Forward only pass.
         // Acts also as an opaque forward fallback for deferred rendering.

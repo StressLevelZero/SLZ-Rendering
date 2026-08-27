@@ -63,6 +63,13 @@ Shader "Universal Render Pipeline/Simple Lit"
         }
         LOD 300
 
+        /// SLZ MODIFIED - Disable Complex Lit entirely, too bloated
+        HLSLINCLUDE
+        #warning URP Simple Lit disabled, please use LitMAS instead
+        #pragma exclude_renderers vulkan d3d11
+        ENDHLSL
+        /// END SLZ MODIFIED
+
         Pass
         {
             Name "ForwardLit"
