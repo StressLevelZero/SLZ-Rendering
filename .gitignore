@@ -52,5 +52,9 @@ com.unity.template-hd/InitCodeMarker
 gfx-sdet-tools
 
 SLZ/SLZTextureProcessor/build*/**
+SLZ/SLZTextureProcessor/netPlugin/SLZTexProc_UnityInterface/bin/
+SLZ/SLZTextureProcessor/netPlugin/SLZTexProc_UnityInterface/obj/
+SLZ/SLZTextureProcessor/netPlugin/SLZTexProc_UnityInterface/Properties/
+SLZ/SLZTextureProcessor/netPlugin/SLZTexProc_UnityInterface/.vs/
 
 SLZ/GfxPlugin_SLZ/build*/**

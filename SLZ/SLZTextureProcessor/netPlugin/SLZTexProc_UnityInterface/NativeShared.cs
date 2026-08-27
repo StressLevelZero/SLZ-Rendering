@@ -28,7 +28,12 @@ namespace SLZ.SLZTextureProcessor
             TXP_RETURN_NO_IMG_LIBRARY,
             TXP_RETURN_INVALID_IMG_LIBRARY,
             TXP_RETURN_INVALID_PATH,
-            TXP_RETURN_FILE_OPEN_FAILED
+            TXP_RETURN_FILE_OPEN_FAILED,
+            TXP_RETURN_UNSUPPORTED_TIFF_INVALID_CHANNEL_FORMAT,
+            TXP_RETURN_UNSUPPORTED_TIFF_INVALID_CHANNEL_COUNT,
+            TXP_RETURN_UNSUPPORTED_TIFF_TILED,
+            TXP_RETURN_UNSUPPORTED_TIFF_SEPARATE_PLANES,
+            TXP_RETURN_UNSUPPORTED_TIFF_IMAGE_BACKWARDS
         };
 
         public enum TxpTextureFormat
@@ -101,6 +106,27 @@ namespace SLZ.SLZTextureProcessor
             public Int64 pad0;
         };
 
+        /// <summary>
+        /// struct that represents a single "subresource" of a texture, ie a single image representing a specific slice/z-layer and mip level.
+        /// </summary>
+#if DOTNET
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+#endif
+        public struct TxpTexSubresource
+        {
+#if DOTNET
+            public IntPtr data;
+#else
+            void* data;
+#endif
+            public TxpTextureFormat format;
+            public int width;
+            public int height;
+            Int32 pad0;
+
+            Int64 pad1;
+        };
+
 
 #if DOTNET
         [StructLayout(LayoutKind.Sequential)]
@@ -114,7 +140,7 @@ namespace SLZ.SLZTextureProcessor
 #if DOTNET
         [StructLayout(LayoutKind.Sequential)]
 #endif
-        public struct ExportImageInfo
+        public struct ImageFileHandler
         {
             public Int32 width;
             public Int32 height;
@@ -129,7 +155,8 @@ namespace SLZ.SLZTextureProcessor
 
 #if !DOTNET
         typedef struct TxpTex2D TxpTex2D;
-        typedef struct ExportImageInfo ExportImageInfo;
+        typedef struct ImageFileHandler ImageFileHandler;
+        typedef struct TxpTexSubresource TxpTexSubresource;
 #endif
 
 #if DOTNET

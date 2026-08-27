@@ -53,3 +53,4 @@ void DisposeImageBuffer(ImageIoHandler* imageIO);
 TXPErrorCode GetImageInfo(ImageIoHandler* imageIO);
 
 void DebugTestSpng(TxpTex2D* outTex);
+TXPErrorCode SaveToPng(PATH_CHAR* savePath, void* imageBuffer, int width, int height, TxpTextureFormat pixelFormat, int compressionLevel);

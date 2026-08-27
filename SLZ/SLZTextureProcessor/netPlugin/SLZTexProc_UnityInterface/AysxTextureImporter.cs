@@ -1,8 +1,8 @@
-using System.Collections;
+﻿using System.Collections;
 using System.IO;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.Experimental.Rendering;
@@ -14,26 +14,35 @@ using static SLZ.SLZTextureProcessor.NativeBindings;
 using Debug = UnityEngine.Debug;
 using UnityEditor.Build;
 using Unity.Mathematics;
+using System.Reflection;
+using UnityEditor.ProjectWindowCallback;
+using UnityEditorInternal;
 
 namespace SLZ.SLZTextureProcessor
 {
-    public enum SLZTextureType
+    [ScriptedImporter(SlzAysxTextureImporter.currentVersion, new string[] { ".aysx" }, new string[] {}, AllowCaching = true)]
+    public class SlzAysxTextureImporter : ScriptedImporter
     {
-        normalMap = 0,
-        detailMap
-    }
-
-    [ScriptedImporter(4, new string[] { "" }, new string[] { "png", "tga", "jpg", "exr", "gif" }, AllowCaching = true)]
-    public class SLZTextureImporter : ScriptedImporter
-    {
-        const uint currentVersion = 4;
+        internal const int currentVersion = 6;
 
         [SerializeField]
         [HideInInspector]
-        private uint SerializedVersion = currentVersion;
-        
+        private int SerializedVersion = currentVersion;
 
-        public SLZTextureType type = SLZTextureType.normalMap;
+        public LazyLoadReference<Texture2D> normalMapRef;
+        public LazyLoadReference<Texture2D> masMapRef;
+
+        public TextureImporterSwizzle normalMapSwizzleR = TextureImporterSwizzle.R;
+        public TextureImporterSwizzle normalMapSwizzleG = TextureImporterSwizzle.G;
+        public TextureImporterSwizzle normalMapSwizzleB = TextureImporterSwizzle.B;
+        public TextureImporterSwizzle normalMapSwizzleA = TextureImporterSwizzle.A;
+
+        public TextureImporterSwizzle masMapSwizzleR = TextureImporterSwizzle.R;
+        public TextureImporterSwizzle masMapSwizzleG = TextureImporterSwizzle.G;
+        public TextureImporterSwizzle masMapSwizzleB = TextureImporterSwizzle.B;
+        public TextureImporterSwizzle masMapSwizzleA = TextureImporterSwizzle.A;
+
+        //public SLZTextureType type = SLZTextureType.normalMap;
         public bool generateMips = true;
         public bool streamingMipmaps = true;
         public int streamingMipmapsPriority = 0;
@@ -98,33 +107,7 @@ namespace SLZ.SLZTextureProcessor
             // PC and everything not mobile
             else
             {
-                if (type == SLZTextureType.normalMap)
-                {
-                    if (geometricRoughness == false)
-                    {
-                        return TextureFormat.BC5;
-                    }
-                    else
-                    {
-                        return TextureFormat.BC7;
-                    }
-                }
-                else if (type == SLZTextureType.detailMap)
-                {
-                    return TextureFormat.BC7;
-                }
-                else
-                {
-                    if (isHDR)
-                    {
-                        return TextureFormat.BC6H;
-                    }
-                    if (hasAlpha)
-                    {
-                        return TextureFormat.BC7;
-                    }
-                    return TextureFormat.DXT1;
-                }
+                return TextureFormat.BC7;
             }
         }
 
@@ -240,9 +223,25 @@ namespace SLZ.SLZTextureProcessor
         public override void OnImportAsset(AssetImportContext ctx)
         {
             SerializedVersion = currentVersion;
-            string assetPath = Path.GetFullPath(ctx.assetPath);
-          
-            Debug.Log("Import path: " + assetPath);
+            //string assetPath = Path.GetFullPath(ctx.assetPath);
+            
+            if (!normalMapRef.isSet || normalMapRef.isBroken || !masMapRef.isSet || masMapRef.isBroken)
+            {
+                Texture2D dummy = new Texture2D(64, 64, TextureFormat.R8, false, false);
+                ctx.AddObjectToAsset("texture", dummy);
+                ctx.SetMainObject(dummy);
+                return;
+            }
+
+            string normalMapLocalPath = AssetDatabase.GetAssetPath(normalMapRef.instanceID);
+            string normalMapAssetPath = Path.GetFullPath(normalMapLocalPath);
+            string masMapLocalPath = AssetDatabase.GetAssetPath(masMapRef.instanceID);
+            string masMapAssetPath = Path.GetFullPath(AssetDatabase.GetAssetPath(masMapRef.instanceID));
+
+            ctx.DependsOnSourceAsset(normalMapLocalPath);
+            ctx.DependsOnSourceAsset(masMapLocalPath);
+
+            //Debug.Log($"Import paths: \n{normalMapAssetPath}\n{masMapAssetPath}");
             SLZTexProcPluginLogger.InitializeLogger();
 
             BuildTarget target = ctx.selectedBuildTarget;
@@ -250,59 +249,50 @@ namespace SLZ.SLZTextureProcessor
             int settingIdx = GetPlatformSettingsIndex(targetName);
             TxpPlatformSettings settings = txpPlatformSettings[settingIdx];
 
-            ImageFileHandler exportInfo = TxpGetImageInfo(assetPath, assetPath.Length);
-            Debug.Log($"ExportInfo:\n    size: {exportInfo.width} x {exportInfo.height}\n    Format: {exportInfo.textureFormat}");
+            ImageFileHandler nrmExportInfo = TxpGetImageInfo(normalMapAssetPath, normalMapAssetPath.Length);
+            //Debug.Log($"Normal ExportInfo:\n    size: {nrmExportInfo.width} x {nrmExportInfo.height}\n    Format: {nrmExportInfo.textureFormat}");
 
-            if (exportInfo.textureFormat == TxpTextureFormat.FMT_UNKNOWN ||
-                exportInfo.ImageIOHandler == IntPtr.Zero ||
-                exportInfo.width == 0 ||
-                exportInfo.height == 0)
+            if (nrmExportInfo.textureFormat == TxpTextureFormat.FMT_UNKNOWN ||
+                nrmExportInfo.ImageIOHandler == IntPtr.Zero ||
+                nrmExportInfo.width == 0 ||
+                nrmExportInfo.height == 0)
             {
-                Debug.LogError($"SLZ Texture Importer: Failed to import texure at path: {assetPath}");
+                Debug.LogError($"SLZ Texture Importer: Failed to import normal map texure at path: {normalMapAssetPath}");
                 Texture2D dummy = new Texture2D(64, 64, TextureFormat.R8, false, false);
                 ctx.AddObjectToAsset("texture", dummy);
                 ctx.SetMainObject(dummy);
-                TxpDisposeImageInfo(exportInfo);
+                TxpDisposeImageInfo(nrmExportInfo);
                 return;
             }
 
-            // Get format for uncompressed Unity texture that most closely matches the raw image.
-            // The normal Texture2D constructors take a TextureFormat enum, which doesn't
-            // precisely specify the size/layout of the texture. Unity assumes you want to
-            // use textures directly for rendering, and thus normally requires that the underlying
-            // format be supported natively by the GPU. Notably, NVidia doesn't support any of the
-            // 3-component RGB formats. When using a TextureFormat, Unity simply looks for the
-            // closest supported format and uses that underneath for the backing data. We need to
-            // know the pixel size and layout exactly, which is obtained by translating the
-            // TextureFormat to a GraphicsFormat. While we could just directly try to use the
-            // closest GraphicsFormat to the source image's pixel layout, if the format is
-            // unsupported by the GPU the texture will fail to create. Thus it is safer to
-            // translate a TextureFormat to a GraphicsFormat.
+            ImageFileHandler masExportInfo = TxpGetImageInfo(masMapAssetPath, masMapAssetPath.Length);
+            //Debug.Log($"MAS ExportInfo:\n    size: {masExportInfo.width} x {masExportInfo.height}\n    Format: {masExportInfo.textureFormat}");
 
-            TextureFormat rawTexFmt = GetFmtFromExport(exportInfo.textureFormat);
-            GraphicsFormat rawGfxFmt = GraphicsFormatUtility.GetGraphicsFormat(rawTexFmt, false);
+            if (masExportInfo.textureFormat == TxpTextureFormat.FMT_UNKNOWN ||
+                masExportInfo.ImageIOHandler == IntPtr.Zero ||
+                masExportInfo.width == 0 ||
+                masExportInfo.height == 0)
+            {
+                Debug.LogError($"SLZ Texture Importer: Failed to import normal map texure at path: {masMapAssetPath}");
+                Texture2D dummy = new Texture2D(64, 64, TextureFormat.R8, false, false);
+                ctx.AddObjectToAsset("texture", dummy);
+                ctx.SetMainObject(dummy);
+                TxpDisposeImageInfo(nrmExportInfo);
+                return;
+            }
+
+            TextureFormat rawNrmTexFmt = GetFmtFromExport(nrmExportInfo.textureFormat);
+            GraphicsFormat rawNrmGfxFmt = GraphicsFormatUtility.GetGraphicsFormat(rawNrmTexFmt, false);
 
             // Uncompressed RGBA image types should always be supported (hopefully)
-            if (!SystemInfo.IsFormatSupported(rawGfxFmt, FormatUsage.Sample))
+            if (!SystemInfo.IsFormatSupported(rawNrmGfxFmt, FormatUsage.Sample))
             {
-                rawGfxFmt = GraphicsFormatUtility.ConvertToAlphaFormat(rawGfxFmt);
+                rawNrmGfxFmt = GraphicsFormatUtility.ConvertToAlphaFormat(rawNrmGfxFmt);
             }
 
-            Debug.Log($"SLZTextureImporter: Uncompressed texture format: {Enum.GetName(typeof(GraphicsFormat), rawGfxFmt)}");
-            bool inputIsHDR = TxpFmtIsHDR(exportInfo.textureFormat);
-            bool requiresAlpha;
-            if (type == SLZTextureType.normalMap)
-            {
-                requiresAlpha = false;
-            }
-            else if (type == SLZTextureType.detailMap)
-            {
-                requiresAlpha = true;
-            }
-            else
-            {
-                requiresAlpha = TxpFmtHasAlpha(exportInfo.textureFormat);
-            }
+            //Debug.Log($"SLZTextureImporter: Uncompressed texture format: {Enum.GetName(typeof(GraphicsFormat), rawNrmGfxFmt)}");
+            bool inputIsHDR = TxpFmtIsHDR(nrmExportInfo.textureFormat);
+            bool requiresAlpha = true;
 
 
             TextureFormat outputFormat;
@@ -316,13 +306,13 @@ namespace SLZ.SLZTextureProcessor
             }
 
             bool hasAlpha = UnityEngine.Experimental.Rendering.GraphicsFormatUtility.HasAlphaChannel(outputFormat);
-            int useDXTnm = ShouldUseDXTnmEncoding(outputFormat, type, hasAlpha) ? 1 : 0;
+            int useDXTnm = 1;
 
-            double largestDim = Math.Max(exportInfo.width, exportInfo.height);
+            double largestDim = Math.Max(nrmExportInfo.width, nrmExportInfo.height);
             double scaleClamp = largestDim > settings.maxSize ? settings.maxSize / largestDim : 1;
 
-            double width = scaleClamp * (double)exportInfo.width;
-            double height = scaleClamp * (double)exportInfo.height;
+            double width = scaleClamp * (double)nrmExportInfo.width;
+            double height = scaleClamp * (double)nrmExportInfo.height;
             double log2Width = Math.Log(width, 2.0);
             double log2Height = Math.Log(height, 2.0);
             switch (NPOTScale)
@@ -352,20 +342,7 @@ namespace SLZ.SLZTextureProcessor
             if (generateMips) texFlags |= TextureCreationFlags.MipChain;
             if (ignoreMipmapLimit) texFlags |= TextureCreationFlags.IgnoreMipmapLimit;
 
-            //
-            //
-            ////TextureUtilMirror.SetTexture2DStreamingMipmaps(output, streamingMipmaps);
-            //SerializedObject serial = new SerializedObject(output);
-            //SerializedProperty streamingProp = serial.FindProperty("m_StreamingMipmaps");
-            //streamingProp.boolValue = streamingMipmaps;
-            //serial.ApplyModifiedProperties();
-            //
-            //Texture2D output = (Texture2D)FormatterServices.GetUninitializedObject(typeof(Texture2D));
-            //MethodInfo mi = typeof(Texture2D).GetMethod("Internal_Create", BindingFlags.NonPublic | BindingFlags.Static);
-            ////private static void Internal_Create([Writable] Texture2D mono, int w, int h, int mipCount, GraphicsFormat format, TextureColorSpace colorSpace, TextureCreationFlags flags, IntPtr nativeTex, string mipmapLimitGroupName)
-            //mi.Invoke(null, new object[] { output, pow2Width, pow2Height, mipCount, rawGfxFmt, 0, texFlags, IntPtr.Zero, null });
-
-            Texture2D output = new Texture2D(pow2Width, pow2Height, rawGfxFmt, texFlags);
+            Texture2D output = new Texture2D(pow2Width, pow2Height, rawNrmGfxFmt, texFlags);
 
             output.filterMode = filtering;
             output.mipMapBias = mipBias;
@@ -391,7 +368,7 @@ namespace SLZ.SLZTextureProcessor
             // 3 channel formats not supported on textures, so the GraphicsFormat we got might have added an alpha channel
             // Thus re-translate the GraphicsFormat back to the native format to get the format with an alpha channel
 
-            TxpTextureFormat expFmt = GetFmtForExport(rawGfxFmt);
+            TxpTextureFormat expFmt = GetFmtForExport(rawNrmGfxFmt);
 
             TxpTex2D textureDesc = new TxpTex2D()
             {
@@ -402,12 +379,30 @@ namespace SLZ.SLZTextureProcessor
                 pad0 = 0
             };
 
-            TXPErrorCode errorCode = (TXPErrorCode)TxpReadAndProcessNormalMap(
-                exportInfo,
+            int4 normalMapSwizzle = new int4(
+                (int) normalMapSwizzleR,
+                (int) normalMapSwizzleG,
+                (int) normalMapSwizzleB,
+                (int) normalMapSwizzleA
+                );
+
+            int4 masMapSwizzle = new int4(
+                (int)masMapSwizzleR,
+                (int)masMapSwizzleG,
+                (int)masMapSwizzleB,
+                (int)masMapSwizzleA
+                );
+
+
+            TXPErrorCode errorCode = (TXPErrorCode)TxpReadAndProcessAoSmNormalMap(
+                nrmExportInfo,
+                masExportInfo,
                 textureDesc,
-                type == SLZTextureType.detailMap ? 1 : 0,
-                useDXTnm,
-                type == SLZTextureType.detailMap ? 1 : 0,
+                normalMapSwizzle,
+                masMapSwizzle,
+                0,
+                1,
+                2,
                 hemiOctahedralEncoding ? 1 : 0,
                 geometricRoughness ? geoRoughnessStrength : 0
                 );
@@ -416,8 +411,8 @@ namespace SLZ.SLZTextureProcessor
             Texture2D thumbnail = null;
             if (errorCode == TXPErrorCode.TXP_RETURN_SUCCESS)
             {
-                thumbnail = new Texture2D(16,16, 
-                    type == SLZTextureType.normalMap ? GraphicsFormat.R8G8B8A8_SRGB : GraphicsFormat.R8G8B8A8_UNorm, 
+                thumbnail = new Texture2D(16, 16,
+                    GraphicsFormat.R8G8B8A8_UNorm,
                     TextureCreationFlags.None);
                 NativeArray<byte> thumbData = thumbnail.GetPixelData<byte>(0);
                 IntPtr thumbPtr = TxpNativeArrayIntPtr.GetIntPtr(thumbData);
@@ -436,15 +431,16 @@ namespace SLZ.SLZTextureProcessor
                     x = output.width > output.height ? 16 : Mathf.Max(1, (int)(16.0 * (double)output.width / (double)output.height)),
                     y = output.height > output.width ? 16 : Mathf.Max(1, (int)(16.0 * (double)output.height / (double)output.width))
                 };
-                int isNormal = type == SLZTextureType.normalMap ? 1 : 0;
-                int4 swizzle = isNormal == 1 && useDXTnm == 1 ? new int4(3, 1, 2, 0) : new int4(0, 1, 2, 3);
+                int isNormal = 0;
+                int4 swizzle = new int4(0, 1, 2, 3);
                 TxpGenerateThumbnail(expFmt, mipPtr, mipDim, thumbPtr, thumbDim, swizzle, isNormal, hemiOctahedralEncoding ? 1 : 0);
             }
 
 
             mipResolutions.Dispose();
             mipChain.Dispose();
-            TxpDisposeImageInfo(exportInfo);
+            TxpDisposeImageInfo(nrmExportInfo);
+            TxpDisposeImageInfo(masExportInfo);
 
             if (errorCode != TXPErrorCode.TXP_RETURN_SUCCESS)
             {
@@ -468,7 +464,7 @@ namespace SLZ.SLZTextureProcessor
 
             SerializedObject serial = new SerializedObject(output);
             SerializedProperty lmFlags = serial.FindProperty("m_LightmapFormat");
-            lmFlags.intValue = type == SLZTextureType.normalMap ? GetLightmapFormatForNormalMap(outputFormat) : 0;
+            lmFlags.intValue = 0;
 
             //SerializedProperty readableProp = serial.FindProperty("m_IsReadable");
             //readableProp.boolValue = isReadable;
@@ -489,21 +485,21 @@ namespace SLZ.SLZTextureProcessor
         {
             switch (expFmt)
             {
-                case (TxpTextureFormat.FMT_R8): return GraphicsFormat.R8_UNorm;
-                case (TxpTextureFormat.FMT_RG8): return GraphicsFormat.R8G8_UNorm;
-                case (TxpTextureFormat.FMT_RGB8): return GraphicsFormat.R8G8B8A8_UNorm;
-                case (TxpTextureFormat.FMT_RGBA8): return GraphicsFormat.R8G8B8A8_UNorm;
-                case (TxpTextureFormat.FMT_R16): return GraphicsFormat.R16_UNorm;
-                case (TxpTextureFormat.FMT_RG16): return GraphicsFormat.R16G16_UNorm;
-                case (TxpTextureFormat.FMT_RGB16): return GraphicsFormat.R16G16B16A16_UNorm;
-                case (TxpTextureFormat.FMT_RGBA16): return GraphicsFormat.R16G16B16A16_UNorm;
-                case (TxpTextureFormat.FMT_RHalf): return GraphicsFormat.R16_SFloat;
-                case (TxpTextureFormat.FMT_RGHalf): return GraphicsFormat.R16G16_SFloat;
-                case (TxpTextureFormat.FMT_RGBHalf): return GraphicsFormat.R16G16B16A16_SFloat;
-                case (TxpTextureFormat.FMT_RGBAHalf): return GraphicsFormat.R16G16B16A16_SFloat;
-                case (TxpTextureFormat.FMT_RFloat): return GraphicsFormat.R32_SFloat;
-                case (TxpTextureFormat.FMT_RGFloat): return GraphicsFormat.R32G32_SFloat;
-                case (TxpTextureFormat.FMT_RGBFloat): return GraphicsFormat.R32G32B32A32_SFloat;
+                case (TxpTextureFormat.FMT_R8):        return GraphicsFormat.R8_UNorm;
+                case (TxpTextureFormat.FMT_RG8):       return GraphicsFormat.R8G8_UNorm;
+                case (TxpTextureFormat.FMT_RGB8):      return GraphicsFormat.R8G8B8A8_UNorm;
+                case (TxpTextureFormat.FMT_RGBA8):     return GraphicsFormat.R8G8B8A8_UNorm;
+                case (TxpTextureFormat.FMT_R16):       return GraphicsFormat.R16_UNorm;
+                case (TxpTextureFormat.FMT_RG16):      return GraphicsFormat.R16G16_UNorm;
+                case (TxpTextureFormat.FMT_RGB16):     return GraphicsFormat.R16G16B16A16_UNorm;
+                case (TxpTextureFormat.FMT_RGBA16):    return GraphicsFormat.R16G16B16A16_UNorm;
+                case (TxpTextureFormat.FMT_RHalf):     return GraphicsFormat.R16_SFloat;
+                case (TxpTextureFormat.FMT_RGHalf):    return GraphicsFormat.R16G16_SFloat;
+                case (TxpTextureFormat.FMT_RGBHalf):   return GraphicsFormat.R16G16B16A16_SFloat;
+                case (TxpTextureFormat.FMT_RGBAHalf):  return GraphicsFormat.R16G16B16A16_SFloat;
+                case (TxpTextureFormat.FMT_RFloat):    return GraphicsFormat.R32_SFloat;
+                case (TxpTextureFormat.FMT_RGFloat):   return GraphicsFormat.R32G32_SFloat;
+                case (TxpTextureFormat.FMT_RGBFloat):  return GraphicsFormat.R32G32B32A32_SFloat;
                 case (TxpTextureFormat.FMT_RGBAFloat): return GraphicsFormat.R32G32B32A32_SFloat;
                 default: return GraphicsFormat.None;
             }
@@ -647,7 +643,7 @@ namespace SLZ.SLZTextureProcessor
             {
                 case 4:
                 case 3:
-                    switch (channelFmt) 
+                    switch (channelFmt)
                     {
                         case (TxpTextureChannelFmt.CHANNEL_FMT_FIXED8): return sRGB ? GraphicsFormat.R8G8B8A8_UNorm : GraphicsFormat.R8G8B8A8_SRGB;
                         case (TxpTextureChannelFmt.CHANNEL_FMT_FIXED16): return GraphicsFormat.R16G16B16A16_UNorm;

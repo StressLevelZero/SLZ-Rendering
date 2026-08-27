@@ -21,28 +21,144 @@ enum imageScaling
 inline float MitchellNetravaliWeight(float dist);
 TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
+#include "imgFunctions/ConvertImage.inl"
+
+void ConvertImage(TxpTextureFormat inFormat, void* imageIn, TxpTextureFormat outFormat, void* imageOut, int2 resolution)
+{
+    switch (inFormat)
+    {
+    case FMT_R8:        ConvertImage_fix8   (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RG8:       ConvertImage_fix8v2 (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGB8:      ConvertImage_fix8v3 (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGBA8:     ConvertImage_fix8v4 (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_R16:       ConvertImage_fix16  (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RG16:      ConvertImage_fix16v2(imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGB16:     ConvertImage_fix16v3(imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGBA16:    ConvertImage_fix16v4(imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RHalf:     ConvertImage_half   (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGHalf:    ConvertImage_half2  (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGBHalf:   ConvertImage_half3  (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGBAHalf:  ConvertImage_half4  (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RFloat:    ConvertImage_float  (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGFloat:   ConvertImage_float2 (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGBFloat:  ConvertImage_float3 (imageIn, outFormat, imageOut, resolution); break;
+    case FMT_RGBAFloat: ConvertImage_float4 (imageIn, outFormat, imageOut, resolution); break;
+    }
+}
+
+TXPErrorCode ConvertSwizzleImage(TxpTextureFormat inFormat, void* imageIn, TxpTextureFormat outFormat, void* imageOut, int2 resolution, mat4s swizzleMat, vec4s swizzleAdd)
+{
+    DebugLog(UNITY_LOG_LEVEL_ERROR, "ConvertSwizzleImage Executing");
+    TXPErrorCode result = TXP_RETURN_SUCCESS;
+    switch (inFormat)
+    {
+    case FMT_UNKNOWN:   DebugLog(UNITY_LOG_LEVEL_ERROR, "Cannot convert, format unknown");
+    case FMT_R8:        ConvertSwizzleImage_fix8   (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RG8:       ConvertSwizzleImage_fix8v2 (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGB8:      ConvertSwizzleImage_fix8v3 (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGBA8:     ConvertSwizzleImage_fix8v4 (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_R16:       ConvertSwizzleImage_fix16  (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RG16:      ConvertSwizzleImage_fix16v2(imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGB16:     ConvertSwizzleImage_fix16v3(imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGBA16:    ConvertSwizzleImage_fix16v4(imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RHalf:     ConvertSwizzleImage_half   (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGHalf:    ConvertSwizzleImage_half2  (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGBHalf:   ConvertSwizzleImage_half3  (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGBAHalf:  ConvertSwizzleImage_half4  (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RFloat:    ConvertSwizzleImage_float  (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGFloat:   ConvertSwizzleImage_float2 (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGBFloat:  ConvertSwizzleImage_float3 (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    case FMT_RGBAFloat: ConvertSwizzleImage_float4 (imageIn, outFormat, imageOut, resolution, swizzleMat, swizzleAdd); break;
+    default: result = TXP_RETURN_INVALID_TEX_FORMAT;
+    }
+    return result;
+}
+
+#include "imgFunctions/SwizzleInPlace.inl"
+
+#include "imgFunctions/TransformInPlace.inl"
+
+#include "imgFunctions/scaleMitchellFunc.inl" 
+
+TXPErrorCode ScaleImageMitchell(TxpTextureFormat inFormat, void* imageIn, const int2 resolutionIn, TxpTextureFormat outFormat, void* imageOut, const int2 resolutionOut)
+{
+    switch (inFormat)
+    {
+    case FMT_R8:        return ScaleImageMitchell_fix8      (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RG8:       return ScaleImageMitchell_fix8v2    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGB8:      return ScaleImageMitchell_fix8v3    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBA8:     return ScaleImageMitchell_fix8v4    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_R16:       return ScaleImageMitchell_fix16     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RG16:      return ScaleImageMitchell_fix16v2   (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGB16:     return ScaleImageMitchell_fix16v3   (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBA16:    return ScaleImageMitchell_fix16v4   (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RHalf:     return ScaleImageMitchell_half      (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGHalf:    return ScaleImageMitchell_half2     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBHalf:   return ScaleImageMitchell_half3     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBAHalf:  return ScaleImageMitchell_half4     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RFloat:    return ScaleImageMitchell_float     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGFloat:   return ScaleImageMitchell_float2    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBFloat:  return ScaleImageMitchell_float3    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBAFloat: return ScaleImageMitchell_float4    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    default: return TXP_RETURN_INVALID_TEX_FORMAT;
+    }
+}
+
+void ScaleImageBox(TxpTextureFormat inFormat, void* imageIn, const int2 resolutionIn, TxpTextureFormat outFormat, void* imageOut, const int2 resolutionOut)
+{
+    switch (inFormat)
+    {
+    case FMT_R8:        ScaleImageBox_fix8      (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RG8:       ScaleImageBox_fix8v2    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGB8:      ScaleImageBox_fix8v3    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBA8:     ScaleImageBox_fix8v4    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_R16:       ScaleImageBox_fix16     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RG16:      ScaleImageBox_fix16v2   (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGB16:     ScaleImageBox_fix16v3   (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBA16:    ScaleImageBox_fix16v4   (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RHalf:     ScaleImageBox_half      (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGHalf:    ScaleImageBox_half2     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBHalf:   ScaleImageBox_half3     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBAHalf:  ScaleImageBox_half4     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RFloat:    ScaleImageBox_float     (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGFloat:   ScaleImageBox_float2    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBFloat:  ScaleImageBox_float3    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    case FMT_RGBAFloat: ScaleImageBox_float4    (imageIn, resolutionIn, outFormat, imageOut, resolutionOut); break;
+    default: return;
+    }
+}
+
+#include "imgFunctions/CombineAoSmNrm.inl"
+
+
 //#define DEBUG_PRINT
 #define PIX_TYPE_IN vec3s
 #define PIX_TYPE_OUT fix16v3
-#include "imgFunctions/ConvertImage.inl"
+// #include "imgFunctions/ConvertImage.inl"
 #undef PIX_TYPE_OUT
 #undef PIX_TYPE_IN
+
 
 #define PIX_TYPE_IN vec4s
 #define PIX_TYPE_OUT fix16v4
-#include "imgFunctions/ConvertImage.inl"
+// #include "imgFunctions/ConvertImage.inl"
 #undef PIX_TYPE_OUT
 #undef PIX_TYPE_IN
 
+//void ConvertImage_vec4s_fix16v4(vec4s* imageIn, fix16v4* imageOut, int2 resolution)
+//{
+//    ConvertImage_float4_fix16v4(imageIn, imageOut, resolution);
+//}
+
 #define PIX_TYPE_IN half3
 #define PIX_TYPE_OUT fix16v3
-#include "imgFunctions/ConvertImage.inl"
+// #include "imgFunctions/ConvertImage.inl"
 #undef PIX_TYPE_OUT
 #undef PIX_TYPE_IN
 
 #define PIX_TYPE_IN half4
 #define PIX_TYPE_OUT fix16v4
-#include "imgFunctions/ConvertImage.inl"
+// #include "imgFunctions/ConvertImage.inl"
 #undef PIX_TYPE_OUT
 #undef PIX_TYPE_IN
 
@@ -54,9 +170,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN fix8v2
 #define PIX_TYPE_OUT fix8v2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -64,9 +180,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN fix8v3
 #define PIX_TYPE_OUT fix8v3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -74,9 +190,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN fix8v4
 #define PIX_TYPE_OUT fix8v4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl"
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl"
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -84,63 +200,63 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN fix8v2
 #define PIX_TYPE_OUT fix8v4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix8v3
 #define PIX_TYPE_OUT fix8v4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix8v4
 #define PIX_TYPE_OUT fix8v3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix8v4
 #define PIX_TYPE_OUT fix8v2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix8v2
 #define PIX_TYPE_OUT fix8v3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix8v3
 #define PIX_TYPE_OUT fix8v2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix16v2
 #define PIX_TYPE_OUT fix16v2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -148,9 +264,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN fix16v3
 #define PIX_TYPE_OUT fix16v3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -158,9 +274,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN fix16v4
 #define PIX_TYPE_OUT fix16v4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -168,63 +284,63 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN fix16v2
 #define PIX_TYPE_OUT fix16v4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix16v3
 #define PIX_TYPE_OUT fix16v4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix16v4
 #define PIX_TYPE_OUT fix16v3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix16v4
 #define PIX_TYPE_OUT fix16v2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix16v2
 #define PIX_TYPE_OUT fix16v3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN fix16v3
 #define PIX_TYPE_OUT fix16v2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN half2
 #define PIX_TYPE_OUT half2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -232,9 +348,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN half3
 #define PIX_TYPE_OUT half3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -242,9 +358,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN half4
 #define PIX_TYPE_OUT half4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -252,54 +368,54 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN half2
 #define PIX_TYPE_OUT half4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN half3
 #define PIX_TYPE_OUT half4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+////#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN half4
 #define PIX_TYPE_OUT half3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN half4
 #define PIX_TYPE_OUT half2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN half2
 #define PIX_TYPE_OUT half3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN half3
 #define PIX_TYPE_OUT half2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
@@ -308,9 +424,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN float2
 #define PIX_TYPE_OUT float2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -318,9 +434,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN float3
 #define PIX_TYPE_OUT float3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -328,9 +444,9 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN float4
 #define PIX_TYPE_OUT float4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing.inl"
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
@@ -338,54 +454,54 @@ TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
 #define PIX_TYPE_IN float2
 #define PIX_TYPE_OUT float4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN float3
 #define PIX_TYPE_OUT float4
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN float4
 #define PIX_TYPE_OUT float3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN float4
 #define PIX_TYPE_OUT float2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN float2
 #define PIX_TYPE_OUT float3
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
 
 #define PIX_TYPE_IN float3
 #define PIX_TYPE_OUT float2
-#include "imgFunctions/ConvertImage.inl"
-#include "imgFunctions/scaleMitchellFunc.inl" 
-#include "imgFunctions/scaleBoxFunc.inl" 
+// #include "imgFunctions/ConvertImage.inl"
+//#include "imgFunctions/scaleMitchellFunc.inl" 
+//#include "imgFunctions/scaleBoxFunc.inl" 
 #include "imgFunctions/NormalProcessing2.inl"
 #undef PIX_TYPE_IN
 #undef PIX_TYPE_OUT
