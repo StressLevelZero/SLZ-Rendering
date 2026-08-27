@@ -61,7 +61,7 @@ cd build-linux-x64
 
 cmake \
  .. \
- -B build-linux-x64 \
+ -B $mode \
  -G Ninja \
  -DCMAKE_C_COMPILER=clang \
  -DCMAKE_CXX_COMPILER=clang++ \
@@ -70,7 +70,8 @@ cmake \
  -DPRINT_HELP=OFF \
  -DVulkan_LIBRARY=$VULKAN_SDK_PATH/Lib \
  -DVulkan_INCLUDE_DIR=$VULKAN_SDK_PATH/Include \
- 
+
+cd $mode
 
 if test "$do_build" = true; then
     ninja
