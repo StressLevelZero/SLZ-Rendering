@@ -48,8 +48,8 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/SLZVkProfiling.hlsl"
 #endif
 // Begin Injection INCLUDES from Injection_Layered.hlsl ----------------------------------------------------------
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Layering.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZTriplanar.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/Layering.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/SLZTriplanar.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BicubicFilter.hlsl"
 // End Injection INCLUDES from Injection_Layered.hlsl ----------------------------------------------------------
 
@@ -567,7 +567,7 @@ albedo.a = 1;
 
 // Begin Injection NORMAL_MAP from Injection_Layered.hlsl ----------------------------------------------------------
 	
-	normalTS = SLZAccurateNormalize(UnpackNormalHemiOctEncodeNoNormalize(hOct));
+	normalTS = SafeNormalize(UnpackNormalHemiOctEncode45NoNormalize(hOct));
 
 // End Injection NORMAL_MAP from Injection_Layered.hlsl ----------------------------------------------------------
 

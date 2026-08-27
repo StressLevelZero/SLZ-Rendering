@@ -1,6 +1,6 @@
 //#!INJECT_BEGIN INCLUDES 0
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Layering.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZTriplanar.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/Layering.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/SLZTriplanar.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BicubicFilter.hlsl"
 //#!INJECT_END
 
@@ -418,7 +418,7 @@ albedo.a = 1;
 
 //#!INJECT_BEGIN NORMAL_MAP 1
 	
-	normalTS = SLZAccurateNormalize(UnpackNormalHemiOctEncodeNoNormalize(hOct));
+	normalTS = SafeNormalize(UnpackNormalHemiOctEncode45NoNormalize(hOct));
 
 //#!INJECT_END
 
