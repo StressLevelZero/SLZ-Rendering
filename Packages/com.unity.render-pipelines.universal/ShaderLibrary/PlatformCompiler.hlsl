@@ -15,4 +15,10 @@
 #pragma never_use_dxc
 #endif
 
+// Adding missing stuff here
+
+
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ObsoleteFunctions.hlsl"
+
+
 #endif
