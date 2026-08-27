@@ -98,9 +98,9 @@ using namespace std;
     
 
 //This macro creates a static function pointer for a given function name, prefixing it with "p_" to avoid conflicts with the actual function if VK_NO_PROTOTYPES isn't defined
-#define VULKAN_DEFINE_API_FUNCPTR(func) static PFN_##func p_##func = (PFN_##func)nullptr;
+#define VULKAN_DEFINE_API_FUNCPTR(func) static PFN_##func func = (PFN_##func)nullptr;
 
-    // Create a pointer "p_vkGetInstanceProcAddr" for the vkGetInstanceProcAddr function 
+    // Create a pointer "vkGetInstanceProcAddr" for the vkGetInstanceProcAddr function 
     VULKAN_DEFINE_API_FUNCPTR(vkGetInstanceProcAddr);
 
     // Create pointers for all of the functions listed under UNITY_USED_VULKAN_API_FUNCTIONS macro defined above
@@ -175,7 +175,7 @@ typedef enum PcieVendorIDs : uint32_t
 static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API InterceptVulkanInitialization(PFN_vkGetInstanceProcAddr getInstanceProcAddr, void*)
 {
     PluginState::Log(kUnityLogTypeLog, "InterceptVulkanInitialization was called!", __FILE__, __LINE__);
-    p_vkGetInstanceProcAddr = getInstanceProcAddr;
+    vkGetInstanceProcAddr = getInstanceProcAddr;
     return Hook_vkGetInstanceProcAddr;
 }
 
@@ -197,29 +197,29 @@ extern "C" void RenderAPI_Vulkan_OnPluginLoad(IUnityInterfaces * interfaces)
 
 static void LoadVulkanAPI(PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkInstance instance)
 {
-    if (!p_vkGetInstanceProcAddr && getInstanceProcAddr)
-        p_vkGetInstanceProcAddr = getInstanceProcAddr;
+    if (!vkGetInstanceProcAddr && getInstanceProcAddr)
+        vkGetInstanceProcAddr = getInstanceProcAddr;
 
-    if (!p_vkCreateInstance)
-        p_vkCreateInstance = (PFN_vkCreateInstance)p_vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    if (!vkCreateInstance)
+        vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
 
     // sets the static pointers of each of the vulkan functions listed under the UNITY_USED_VULKAN_API_FUNCTIONS macro
-    // from the pointer returned by p_vkGetInstanceProcAddr for the given instance and function name
+    // from the pointer returned by vkGetInstanceProcAddr for the given instance and function name
     // Original implementation did a null check on the pointer, but unity editor can reload the graphics system while running (ie loading renderdoc).
     // The function pointers need to be refreshed at that point otherwise they won't go through any addtional layers that got added and will potentially cause a crash
-#define LOAD_VULKAN_FUNC(fn) p_##fn = (PFN_##fn)p_vkGetInstanceProcAddr(instance, #fn)
+#define LOAD_VULKAN_FUNC(fn) fn = (PFN_##fn)vkGetInstanceProcAddr(instance, #fn)
     UNITY_USED_VULKAN_API_FUNCTIONS(LOAD_VULKAN_FUNC);
 #undef LOAD_VULKAN_FUNC
 }
 
 static void LoadVulkanAPIDevice(PFN_vkGetDeviceProcAddr getDeviceProcAddr, VkDevice device)
 {
-    if (!p_vkGetDeviceProcAddr && getDeviceProcAddr)
-        p_vkGetDeviceProcAddr = getDeviceProcAddr;
+    if (!vkGetDeviceProcAddr && getDeviceProcAddr)
+        vkGetDeviceProcAddr = getDeviceProcAddr;
 
     // sets the static pointers of each of the vulkan functions listed under the UNITY_USED_VULKAN_API_FUNCTIONS macro
-    // from the pointer returned by p_vkGetDeviceProcAddr for the given device and function name
-#define LOAD_VULKAN_DEVICE_FUNC(fn) p_##fn = (PFN_##fn)p_vkGetDeviceProcAddr(device, #fn)
+    // from the pointer returned by vkGetDeviceProcAddr for the given device and function name
+#define LOAD_VULKAN_DEVICE_FUNC(fn) fn = (PFN_##fn)vkGetDeviceProcAddr(device, #fn)
     UNITY_USED_VULKAN_DEVICE_FUNCTIONS(LOAD_VULKAN_DEVICE_FUNC);
 #undef LOAD_VULKAN_DEVICE_FUNC
 }
@@ -230,8 +230,8 @@ static void LoadVulkanAPIDevice(PFN_vkGetDeviceProcAddr getDeviceProcAddr, VkDev
 static void LoadVulkanAPIDeviceFromInstance(VkInstance instance)
 {
     // sets the static pointers of each of the vulkan functions listed under the UNITY_USED_VULKAN_API_FUNCTIONS macro
-    // from the pointer returned by p_vkGetInstanceProcAddr for the given instance and function name
-#define LOAD_VULKAN_DEVICE_FUNC(fn) p_##fn = (PFN_##fn)p_vkGetInstanceProcAddr(instance, #fn)
+    // from the pointer returned by vkGetInstanceProcAddr for the given instance and function name
+#define LOAD_VULKAN_DEVICE_FUNC(fn) fn = (PFN_##fn)vkGetInstanceProcAddr(instance, #fn)
     UNITY_USED_VULKAN_DEVICE_FUNCTIONS(LOAD_VULKAN_DEVICE_FUNC);
 #undef LOAD_VULKAN_DEVICE_FUNC
 }
@@ -466,7 +466,7 @@ void PluginVk::GfxEventShutdown()
     }
     if (PluginVk::instance->gfxCommandPool != VK_NULL_HANDLE)
     {
-        p_vkDestroyCommandPool(PluginVk::s_UnityInstanceVk.device, PluginVk::instance->gfxCommandPool, NULL);
+        vkDestroyCommandPool(PluginVk::s_UnityInstanceVk.device, PluginVk::instance->gfxCommandPool, NULL);
     }
 
 }
@@ -552,7 +552,7 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkIns
     // This patches vkGetInstanceProcAddr to call vkGetDeviceProcAddr instead after the device has been 
     // created. This will probably cause issues with other native plugins and future unity versions!!!!
     /*
-    if ( PluginVk::vkDevice != VK_NULL_HANDLE && p_vkGetDeviceProcAddr != nullptr && !instanceLoadedFuncs.contains(std::string_view(funcName)) )
+    if ( PluginVk::vkDevice != VK_NULL_HANDLE && vkGetDeviceProcAddr != nullptr && !instanceLoadedFuncs.contains(std::string_view(funcName)) )
     {
 #if defined(_DEBUG)
         std::string msg("Unity Getting Device Level Function through vkGetInstanceProcAddr: ");
@@ -579,7 +579,7 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkIns
 
 #undef INTERCEPT
 
-    return p_vkGetInstanceProcAddr(device, funcName);
+    return vkGetInstanceProcAddr(device, funcName);
 }
 
 static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetDeviceProcAddr(VkDevice device, const char* funcName)
@@ -587,7 +587,7 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetDeviceProcAddr(VkDevic
     if (!funcName)
         return NULL;
 
-#define INTERCEPT(fn) if (strcmp(funcName, #fn) == 0) { p_##fn = (PFN_##fn)p_vkGetDeviceProcAddr(device, funcName); return (PFN_vkVoidFunction)&Hook_##fn; }
+#define INTERCEPT(fn) if (strcmp(funcName, #fn) == 0) { fn = (PFN_##fn)vkGetDeviceProcAddr(device, funcName); return (PFN_vkVoidFunction)&Hook_##fn; }
 
 #ifndef DUMMY_PLUGIN
     if (!SLZGraphicsConfig::disableSamplerHook) { INTERCEPT(vkCreateSampler); }
@@ -596,7 +596,7 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetDeviceProcAddr(VkDevic
 
 #undef INTERCEPT
 
-    return p_vkGetDeviceProcAddr(device, funcName);
+    return vkGetDeviceProcAddr(device, funcName);
 }
 
 static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance)
@@ -639,13 +639,13 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCrea
     //newCreateInfo.enabledExtensionCount = pCreateInfo->enabledExtensionCount;
     //newCreateInfo.ppEnabledExtensionNames = pCreateInfo->ppEnabledExtensionNames;
 
-    p_vkCreateInstance = (PFN_vkCreateInstance)p_vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
 
-    VkResult result = p_vkCreateInstance(newCreateInfo, pAllocator, pInstance);
+    VkResult result = vkCreateInstance(newCreateInfo, pAllocator, pInstance);
     if (result == VK_SUCCESS)
     {
         PluginVk::vkDevice = VK_NULL_HANDLE;
-        LoadVulkanAPI(p_vkGetInstanceProcAddr, *pInstance);
+        LoadVulkanAPI(vkGetInstanceProcAddr, *pInstance);
     }
     return result;
 }
@@ -705,9 +705,9 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
 
     // Get all the extensions available for the physicial device
     uint32_t availableDeviceExtCount;
-    p_vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &availableDeviceExtCount, nullptr);
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &availableDeviceExtCount, nullptr);
     unique_ptr<VkExtensionProperties[]> availableDeviceExt(new VkExtensionProperties[availableDeviceExtCount]);
-    p_vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &availableDeviceExtCount, availableDeviceExt.get());
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &availableDeviceExtCount, availableDeviceExt.get());
 
     constexpr int extCount = RequestedVkExtensions::ExtCount;
 
@@ -774,7 +774,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         propertyChainNext = (VkBaseOutStructure*)(&physDevBaryProps);
     }
 
-    p_vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
+    vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
 
     // Get graphics hardware info
 
@@ -824,11 +824,11 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         hasKhrShadingRate = true;
     }
 
-    bool hasFragmentDensityMap = false;
-    if (extIsAvailable[RequestedVkExtensions::KHR_fragment_density_map])
-    {
-        hasFragmentDensityMap = true;
-    }
+    //bool hasFragmentDensityMap = false;
+    //if (extIsAvailable[RequestedVkExtensions::KHR_fragment_density_map])
+    //{
+    //    hasFragmentDensityMap = true;
+    //}
 
     // Create a chain of physical device FEATURES 2 stucts for each extension that has them
 
@@ -865,7 +865,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
 
    
     // Get device features
-    p_vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures);
+    vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures);
 
 
     
@@ -996,14 +996,14 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         usedFragRateFeatures->primitiveFragmentShadingRate = 0;
     }
 
-    VkResult result = p_vkCreateDevice(physicalDevice, newCreateInfo, pAllocator, pDevice);
+    VkResult result = vkCreateDevice(physicalDevice, newCreateInfo, pAllocator, pDevice);
     if (result == VK_SUCCESS)
     {
         // Don't load device-level functions properly. Unity loads them via the instance, 
         // if other plugins or vulkan layers attempt to hook the same functions using vkGetDeviceProcAddr will
         // remove their hook
         PluginVk::vkDevice = *pDevice;
-        LoadVulkanAPIDevice(p_vkGetDeviceProcAddr, *pDevice);
+        LoadVulkanAPIDevice(vkGetDeviceProcAddr, *pDevice);
 
         // After creating the device, reset the pipeline shading rate value. This should hide the fact that we enabled it from unity if the fragment density map was also enabled 
         usedFragRateFeatures->pipelineFragmentShadingRate = originalPipelineFragmentShadingRate; 
@@ -1120,7 +1120,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(
             _freea(needsVRS);
         }
 
-        VkResult createPipelinesResult = p_vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+        VkResult createPipelinesResult = vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
 
         if (heapAllocVRSStructs)
         {
@@ -1134,7 +1134,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(
         return createPipelinesResult;
     }
 
-    VkResult createPipelinesResult = p_vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    VkResult createPipelinesResult = vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     return createPipelinesResult;
 }
 
@@ -1165,7 +1165,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSampler(VkDevice device, cons
         eCreateInfo->mipLodBias = eCreateInfo->mipLodBias + anisoMipBias;
     }
 
-    return p_vkCreateSampler(device, eCreateInfo, pAllocator, pSampler);
+    return vkCreateSampler(device, eCreateInfo, pAllocator, pSampler);
 }
 
 static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(
@@ -1180,6 +1180,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(
     {
 
     }
+    return vkCreateRenderPass2(device, pCreateInfo, pAllocator, pRenderPass);
 }
 
 
@@ -1210,7 +1211,7 @@ extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API PrintFoveatedPointer(
 uint32_t FindMemoryType(uint32_t memoryTypeBits, VkMemoryPropertyFlags properties)
 {
     VkPhysicalDeviceMemoryProperties memProps;
-    p_vkGetPhysicalDeviceMemoryProperties(PluginVk::s_UnityInstanceVk.physicalDevice, &memProps);
+    vkGetPhysicalDeviceMemoryProperties(PluginVk::s_UnityInstanceVk.physicalDevice, &memProps);
     for (int i = 0; i < memProps.memoryTypeCount; i++) {
         if (memoryTypeBits & (1 << i)) {
             return i;
@@ -1228,23 +1229,23 @@ void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyF
     bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (p_vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to create buffer!");
     }
 
     VkMemoryRequirements memRequirements;
-    p_vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
 
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-    if (p_vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate buffer memory!");
     }
 
-    p_vkBindBufferMemory(device, buffer, bufferMemory, 0);
+    vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
 class TempCmdBuffer
@@ -1260,28 +1261,28 @@ public:
         allocInfo.commandBufferCount = 1;
 
        
-        p_vkAllocateCommandBuffers(PluginVk::s_UnityInstanceVk.device, &allocInfo, &cmd);
+        vkAllocateCommandBuffers(PluginVk::s_UnityInstanceVk.device, &allocInfo, &cmd);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        p_vkBeginCommandBuffer(cmd, &beginInfo);
+        vkBeginCommandBuffer(cmd, &beginInfo);
     }
 
     ~TempCmdBuffer()
     {
-        p_vkEndCommandBuffer(cmd);
+        vkEndCommandBuffer(cmd);
 
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmd;
 
-        p_vkQueueSubmit(PluginVk::s_UnityInstanceVk.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        p_vkQueueWaitIdle(PluginVk::s_UnityInstanceVk.graphicsQueue);
+        vkQueueSubmit(PluginVk::s_UnityInstanceVk.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(PluginVk::s_UnityInstanceVk.graphicsQueue);
 
-        p_vkFreeCommandBuffers(PluginVk::s_UnityInstanceVk.device, PluginVk::instance->gfxCommandPool, 1, &cmd);
+        vkFreeCommandBuffers(PluginVk::s_UnityInstanceVk.device, PluginVk::instance->gfxCommandPool, 1, &cmd);
     }
 };
 
@@ -1323,7 +1324,7 @@ void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
         throw std::invalid_argument("unsupported layout transition!");
     }
 
-    p_vkCmdPipelineBarrier(cmd, sourceStage, destinationStage, 0, 0, NULL, 0, NULL, 1, &barrier);
+    vkCmdPipelineBarrier(cmd, sourceStage, destinationStage, 0, 0, NULL, 0, NULL, 1, &barrier);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT  void* UNITY_INTERFACE_API CreateTextureFromData(void* ptr, unsigned int width, unsigned int height, unsigned int format, unsigned long byteCount)
@@ -1339,9 +1340,9 @@ extern "C" UNITY_INTERFACE_EXPORT  void* UNITY_INTERFACE_API CreateTextureFromDa
     CreateBuffer(byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer, bufferMem);
 
     void* texData;
-    p_vkMapMemory(PluginVk::s_UnityInstanceVk.device, bufferMem, 0, byteCount, 0, &texData);
+    vkMapMemory(PluginVk::s_UnityInstanceVk.device, bufferMem, 0, byteCount, 0, &texData);
     memcpy(texData, ptr, byteCount);
-    p_vkUnmapMemory(PluginVk::s_UnityInstanceVk.device, bufferMem);
+    vkUnmapMemory(PluginVk::s_UnityInstanceVk.device, bufferMem);
 
     VkFormat imgFormat = (VkFormat)format;
     VkImage* texture = (VkImage*)malloc(sizeof(VkImage));
@@ -1365,12 +1366,12 @@ extern "C" UNITY_INTERFACE_EXPORT  void* UNITY_INTERFACE_API CreateTextureFromDa
         VK_IMAGE_LAYOUT_UNDEFINED
     };
 
-    if (p_vkCreateImage(PluginVk::s_UnityInstanceVk.device, &info, nullptr, texture) != VK_SUCCESS) {
+    if (vkCreateImage(PluginVk::s_UnityInstanceVk.device, &info, nullptr, texture) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
 
     VkMemoryRequirements memReq;
-    p_vkGetImageMemoryRequirements(PluginVk::s_UnityInstanceVk.device, *texture, &memReq);
+    vkGetImageMemoryRequirements(PluginVk::s_UnityInstanceVk.device, *texture, &memReq);
     uint32_t memType = FindMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     VkMemoryAllocateInfo allocInfo = {};
@@ -1378,9 +1379,9 @@ extern "C" UNITY_INTERFACE_EXPORT  void* UNITY_INTERFACE_API CreateTextureFromDa
     allocInfo.allocationSize = memReq.size;
     allocInfo.memoryTypeIndex = memType;
 
-    p_vkBindImageMemory(PluginVk::s_UnityInstanceVk.device, *texture, textureMemory, 0);
+    vkBindImageMemory(PluginVk::s_UnityInstanceVk.device, *texture, textureMemory, 0);
 
-    if (p_vkAllocateMemory(PluginVk::s_UnityInstanceVk.device, &allocInfo, nullptr, &textureMemory) != VK_SUCCESS) {
+    if (vkAllocateMemory(PluginVk::s_UnityInstanceVk.device, &allocInfo, nullptr, &textureMemory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
     }
 
@@ -1403,7 +1404,7 @@ extern "C" UNITY_INTERFACE_EXPORT  void* UNITY_INTERFACE_API CreateTextureFromDa
             1
         };
 
-        p_vkCmdCopyBufferToImage(buf.cmd, buffer, *texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+        vkCmdCopyBufferToImage(buf.cmd, buffer, *texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
     }
     transitionImageLayout(*texture, imgFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
