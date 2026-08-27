@@ -146,22 +146,29 @@ namespace SLZ.SLZTextureProcessor
 
             TXPErrorCode returnCode = TXPErrorCode.TXP_RETURN_GENERAL_FAILURE;
             string fullPath = Path.GetFullPath(assetPath);
+            bool isTIF = fullPath.EndsWith(".tif", StringComparison.InvariantCultureIgnoreCase) ||
+                         fullPath.EndsWith(".tiff", StringComparison.InvariantCultureIgnoreCase);
 
-            ExportImageInfo exportInfo = TxpGetImageInfo(fullPath, fullPath.Length);
+            bool getImageInfoFailed = true;
+            bool readSource = false;
+            ImageFileHandler exportInfo = default;
+            if (!isTIF)
+            {
+                exportInfo = TxpGetImageInfo(fullPath, fullPath.Length);
 
-            bool getImageInfoFailed = exportInfo.textureFormat == TxpTextureFormat.FMT_UNKNOWN ||
-               exportInfo.ImageIOHandler == IntPtr.Zero ||
-               exportInfo.width == 0 ||
-               exportInfo.height == 0;
+                getImageInfoFailed = exportInfo.textureFormat == TxpTextureFormat.FMT_UNKNOWN ||
+                   exportInfo.ImageIOHandler == IntPtr.Zero ||
+                   exportInfo.width == 0 ||
+                   exportInfo.height == 0;
 
-            bool isHighP = exportInfo.textureFormat > TxpTextureFormat.FMT_RGBA8;
-            bool isHigherRes = (exportInfo.width >= 2 * output.width) && (exportInfo.height >= 2 * output.height);
+                bool isHighP = exportInfo.textureFormat > TxpTextureFormat.FMT_RGBA8;
+                bool isHigherRes = (exportInfo.width >= 2 * output.width) && (exportInfo.height >= 2 * output.height);
 
-            bool isGrayscale = inputImport.convertToNormalmap;
+                bool isGrayscale = inputImport.convertToNormalmap;
 
-            bool readSource = !isGrayscale && (isHighP || (isHigherRes && geoRoughness));
-            readSource = readSource && !texSettings.dontReadSource;
-
+                readSource = !isGrayscale && (isHighP || (isHigherRes && geoRoughness));
+                readSource = readSource && !texSettings.dontReadSource;
+            }
             if (!readSource || getImageInfoFailed)
             {
                // Debug.Log($"SLZ TexProc: using unity imported image for {inputImport.assetPath}");

@@ -52,6 +52,34 @@ typedef struct int2
 	int32_t y;
 } int2;
 
+// Use this for exported functions instead of ivec4s. ivec4s doesn't enforce alignment, but
+// all the other cglm vector types do and it makes sense that it should, so this might change in the future.  
+typedef struct int4_unaligned
+{
+	int32_t v0[4];
+} int4_unaligned;
+
+// Use this for exported function parameters instead of vec4s to avoid 
+// BAD_INSTRUCTION_PTR_INVALID_POINTER_READ due to the compiler expecting 
+// the vec4s argument to be aligned on 16, and trying to use aligned vector
+// instructions on an unaligned address
+typedef struct float4_unaligned
+{
+	float v0[4];
+} float4_unaligned;
+
+// Use this for exported function parameters instead of mat4s to avoid 
+// BAD_INSTRUCTION_PTR_INVALID_POINTER_READ due to the compiler expecting 
+// the mat4s argument to be aligned on 32, and trying to use aligned vector
+// instructions on an unaligned address 
+typedef struct float4x4_unaligned
+{
+	float c0[4];
+	float c1[4];
+	float c2[4];
+	float c3[4];
+} float4x4_unaligned;
+
 #if __STDC_VERSION__ || __cplusplus
 
 #else

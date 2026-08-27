@@ -258,6 +258,7 @@ public:
     static inline bool s_Shutdown = false;
     static inline bool s_SupportsPerPipelineShadingRate = false;
     static inline bool s_SupportsLayeredShadingRate = false;
+    static inline bool s_SupportsFragmentDensityMap = false;
     static inline VkExtent2D s_tileSize = { 1, 1 };
 
    
@@ -350,18 +351,19 @@ public:
         VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR, 
         NULL,
         s_testFragmentSize,
-        {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR} };
+        {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR} };
+
     VkPipelineFragmentShadingRateStateCreateInfoKHR vrsShadingRate = {
         VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR,
         NULL,
         s_testFragmentSize,
-        {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR} };
+        {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR} };
 
     static inline VkPipelineFragmentShadingRateStateCreateInfoKHR s_pipelineRate2x2 = {
        VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR,
        NULL,
        {2, 2},
-       {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR}
+       {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR, VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR}
     };
 
 
@@ -657,6 +659,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCrea
 // a preprocessor macro in the vulkan headers. Use more macros to tack that back on later
 #define REQUESTED_VK_EXTS(macro) \
     macro(KHR_fragment_shading_rate) \
+    macro(KHR_fragment_density_map) \
     macro(KHR_fragment_shader_barycentric) \
     macro(KHR_multiview) \
     //macro(NV_shading_rate_image) \
@@ -665,14 +668,26 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCrea
 
 #define ENUM_DEF(x) x,
 
-enum RequestedVkExtensions
+typedef enum RequestedVkExtensions
 {
     REQUESTED_VK_EXTS(ENUM_DEF)
 
     ExtCount // Keep Last!
-};
+} RequestedVkExtensions;
 
 #undef ENUM_DEF
+
+class ExtensionRequest
+{
+public:
+    RequestedVkExtensions extIndex;
+    bool isAvailable;
+    bool isEnabled;
+    VkStructureType propertiesType;
+    VkStructureType featuresType;
+    virtual void AppendToGetProperitesLL() = 0;
+    virtual void AppendToGetFeaturesLL() = 0;
+};
 
 
 static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
@@ -683,7 +698,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
 {
     PluginState::Log(kUnityLogTypeLog, "Hook_vkCreateDevice Called!", __FILE__, __LINE__);
 
-    //Cast the createinfo to an modifiable pointer so we don't have to copy everything. Unsafe asf, but hasn't caused any issues so far...
+    //Cast the createinfo to an modifiable pointer so we don't have to copy everything. Unsafe af, but hasn't caused any issues so far...
     VkDeviceCreateInfo* newCreateInfo = const_cast<VkDeviceCreateInfo*>(pCreateInfo);
 
     PluginVk::s_UnityAllocatorCallbacks = pAllocator;
@@ -737,6 +752,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
     deviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
     VkBaseOutStructure* propertyChainNext = (VkBaseOutStructure*)&deviceProps;
 
+    //
     PluginVk::s_VrsProps = new VkPhysicalDeviceFragmentShadingRatePropertiesKHR;
     memset(PluginVk::s_VrsProps, 0, sizeof(VkPhysicalDeviceFragmentShadingRatePropertiesKHR));
     PluginVk::s_VrsProps->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
@@ -808,6 +824,12 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         hasKhrShadingRate = true;
     }
 
+    bool hasFragmentDensityMap = false;
+    if (extIsAvailable[RequestedVkExtensions::KHR_fragment_density_map])
+    {
+        hasFragmentDensityMap = true;
+    }
+
     // Create a chain of physical device FEATURES 2 stucts for each extension that has them
 
     VkPhysicalDeviceFeatures2 deviceFeatures = {};
@@ -841,22 +863,12 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDevice(
         featureChainNext = (VkBaseOutStructure*)(&multiviewFeatures);
     }
 
-
-    VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT advBlendOps = {};
-    advBlendOps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT;
-    
-    
-
-
-
+   
     // Get device features
     p_vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures);
 
 
-
-
-    //hasNvShadingRate = hasNvShadingRate && dynState3Features.extendedDynamicState3ShadingRateImageEnable;
-
+    
     PluginVk::s_SupportsPerPipelineShadingRate = hasKhrShadingRate && vrsFeatures.pipelineFragmentShadingRate;
     PluginVk::s_SupportsLayeredShadingRate = hasKhrShadingRate && PluginVk::s_VrsProps->layeredShadingRateAttachments;
 
@@ -1083,7 +1095,8 @@ static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(
 
                         VkPipelineFragmentShadingRateStateCreateInfoKHR* editRate = (VkPipelineFragmentShadingRateStateCreateInfoKHR*)const_cast<VkBaseOutStructure*>(next);
                         editRate->fragmentSize = vrsStructs[i].fragmentSize;
-
+                        editRate->combinerOps[0] = vrsStructs[i].combinerOps[0];
+                        editRate->combinerOps[1] = vrsStructs[i].combinerOps[1];
                         break;
                     }
                     

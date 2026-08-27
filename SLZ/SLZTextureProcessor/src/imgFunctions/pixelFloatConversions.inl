@@ -4,6 +4,14 @@
 #define PCAT(TOK1, TOK2) PCAT_INTL(TOK1, TOK2)
 #define PCAT3(TOK1, TOK2, TOK3) PCAT3_INTL(TOK1, TOK2, TOK3)
 
+
+inline float PCAT(PIX_VECU, 1ToFloat1)(const PIX_SCALAR value)
+// static inline vec2s Fixed8v2ToFloat2(const fixed8v2* value)
+{
+	float output = PIX_TO_FLOAT(value);
+	return output;
+}
+
 /** @brief Convert a 2 component RG pixel to a floating point vector
  *	@param value pixel to convert
  *  @return 32 bit floating point representation of the pixel
@@ -85,6 +93,24 @@ inline vec4s PCAT(PIX_VECU, 2ToFloat4)(const PCAT(PIX_VEC, 2) value)
 	{
 		PIX_TO_FLOAT(value.r),
 		PIX_TO_FLOAT(value.g),
+		0,
+		0
+	};
+	return output;
+}
+
+/** @brief Convert a 2 component RGB pixel to a 4 component floating point vector padded with 0's
+ *	@param value pixel to convert
+ *  @return 4 component 32 bit floating point representation of the pixel
+ */
+ //#pragma omp declare simd
+inline vec4s PCAT(PIX_VECU, 1ToFloat4)(const PIX_SCALAR value)
+// static inline vec4s Fixed8v2ToFloat4(const fixed8v2* value)
+{
+	vec4s output =
+	{
+		PIX_TO_FLOAT(value),
+		0,
 		0,
 		0
 	};
@@ -173,6 +199,18 @@ static inline PCAT(PIX_VEC, 2) PCAT3(Float4To, PIX_VECU, 2)(const vec4s value)
 		FLOAT_TO_PIX(value.r),
 		FLOAT_TO_PIX(value.g),
 	};
+	return output;
+}
+
+/** @brief Convert the first 2 components of a 4 wide floating point vector to a RG pixel struct
+ *	@param value vector to convert
+ *  @return the RG pixel value
+ */
+ //#pragma omp declare simd
+static inline PIX_SCALAR PCAT3(Float4To, PIX_VECU, 1)(const vec4s value)
+// static inline fixed8v2 Float4ToFixed8v2(const vec4s* value)
+{
+	PIX_SCALAR output = FLOAT_TO_PIX(value.r);
 	return output;
 }
 
