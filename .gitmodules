@@ -13,3 +13,6 @@
 [submodule "SLZ/SLZTextureProcessor/extern/tinyexr"]
 	path = SLZ/SLZTextureProcessor/extern/tinyexr
 	url = https://github.com/syoyo/tinyexr.git
+[submodule "SLZ/SLZTextureProcessor/lib/libtiff"]
+	path = SLZ/SLZTextureProcessor/lib/libtiff
+	url = https://gitlab.com/libtiff/libtiff.git

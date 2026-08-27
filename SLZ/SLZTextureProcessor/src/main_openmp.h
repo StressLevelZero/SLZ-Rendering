@@ -61,10 +61,18 @@ TXPErrorCode ProcessNormalMap(TxpTextureFormat formatIn, TxpTextureFormat format
 
 TXPErrorCode CreateThumbnail(TxpTextureFormat formatIn, void* imageIn, int2 resIn, void* imageOut, int2 resOut, ivec4s swizzle, int isNormal, int hemiOct);
 
+TXPErrorCode YFlipImage(void* image, size_t rowSize, int rowCount);
 
-void ConvertImage_vec3s_fix16v3(vec3s* imageIn, fix16v3* imageOut, int2 resolution);
-void ConvertImage_vec4s_fix16v4(vec4s* imageIn, fix16v4* imageOut, int2 resolution);
+void ConvertImage_float3_fix16v3(float3* imageIn, fix16v3* imageOut, int2 resolution);
+void ConvertImage_float4_fix16v4(float4* imageIn, fix16v4* imageOut, int2 resolution);
 void ConvertImage_half3_fix16v3(half3* imageIn, fix16v3* imageOut, int2 resolution);
 void ConvertImage_half4_fix16v4(half4* imageIn, fix16v4* imageOut, int2 resolution);
+
+void ConvertImage(TxpTextureFormat inFormat, void* imageIn, TxpTextureFormat outFormat, void* imageOut, int2 resolution);
+TXPErrorCode ConvertSwizzleImage(TxpTextureFormat inFormat, void* imageIn, TxpTextureFormat outFormat, void* imageOut, int2 resolution, mat4s swizzleMat, vec4s swizzleAdd);
+void SwizzleInPlace(TxpTextureFormat fmt, void* imageIn, int2 resolution, ivec4s swizzle);
+void TransformInPlace(TxpTextureFormat fmt, void* imageIn, int2 resolution, mat4s transform, vec4s offset);
+TXPErrorCode CombineAoSmNrm(TxpTextureFormat outFormat, void* aoSmImageInOut, TxpTextureFormat nrmFormat, void* normalImageInOut, int2 resolution);
+TXPErrorCode ScaleImageMitchell(TxpTextureFormat inFormat, void* imageIn, const int2 resolutionIn, TxpTextureFormat outFormat, void* imageOut, const int2 resolutionOut);
 
 #endif

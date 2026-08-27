@@ -192,4 +192,5 @@ Runtime/Resources/Assets/DefaultResourcesExtra/Nature/SpeedTree9.shader filter=l
 Editor/Tools/UnityYAMLMerge/TestData/**/*.unity -filter -diff -merge text=auto eol=lf
 Editor/Tools/UnityYAMLMerge/TestData/**/*.prefab -filter -diff -merge text=auto eol=lf
 Packages/com.unity.render-pipelines.universal/Editor/SLZ/Importers/SLZTexProc/SLZTexProc_UnityInterface.pdb filter=lfs diff=lfs merge=lfs -text
+Packages/com.unity.render-pipelines.universal/Editor/SLZ/Importers/SLZTexProc/SLZTextureProcessor.pdb filter=lfs diff=lfs merge=lfs -text
 Packages/com.unity.render-pipelines.universal/Textures/FGD/FGD_GGX_Unorm16.png filter=lfs diff=lfs merge=lfs -text

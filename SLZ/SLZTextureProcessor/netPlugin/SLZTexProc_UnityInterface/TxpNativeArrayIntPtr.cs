@@ -7,7 +7,7 @@ namespace SLZ.SLZTextureProcessor
 	internal static unsafe class TxpNativeArrayIntPtr
 	{
 		public static unsafe IntPtr GetIntPtr<T>(NativeArray<T> array)
-			where T : unmanaged
+			where T : struct
 		{
 			void* dataPointer = array.GetUnsafePtr();
 			return (IntPtr)dataPointer;

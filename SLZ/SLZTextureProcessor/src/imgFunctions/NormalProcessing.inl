@@ -84,7 +84,7 @@ inline void CCAT(InitVarianceDirect_, PIX_TYPE_IN)(PIX_TYPE_IN* imageIn, half2* 
  *      x: normal X, y: normal Y, z: geometric roughness or detail smoothness, 
  *      w: detail AO
  */
-static inline void CCAT(InitNormalize_, PIX_TYPE_IN)(PIX_TYPE_IN* imageIn, const int2 resIn, const ivec4s swizzleMaskIn, const ivec4s swizzleMaskOut, int isDetail)
+static inline void CCAT(InitNormalize_, PIX_TYPE_IN)(PIX_TYPE_IN* imageIn, const int2 resIn, const ivec4s swizzleMaskIn, const ivec4s swizzleMaskOut, int preserveOtherChannels)
 {
 
     long pixelCount = (long)resIn.x * (long)resIn.y;
@@ -122,8 +122,8 @@ static inline void CCAT(InitNormalize_, PIX_TYPE_IN)(PIX_TYPE_IN* imageIn, const
         {
             outp[i].raw[swizzleMaskOut.x] = normals[i].x;
             outp[i].raw[swizzleMaskOut.y] = normals[i].y;
-            outp[i].raw[swizzleMaskOut.z] = isDetail ? fpixels[i].raw[swizzleMaskIn.z] : 0; // z is the blue channel, should be 0 if we're not a detail map
-            outp[i].raw[swizzleMaskOut.w] = isDetail ? fpixels[i].raw[swizzleMaskIn.w] : 1; // w is either the red or alpha channel, should be 1 if not a detail map
+            outp[i].raw[swizzleMaskOut.z] = preserveOtherChannels != 0 ? fpixels[i].raw[swizzleMaskIn.z] : 0; // z is the blue channel, should be 0 if we're not a detail map
+            outp[i].raw[swizzleMaskOut.w] = preserveOtherChannels != 0 ? fpixels[i].raw[swizzleMaskIn.w] : 1; // w is either the red or alpha channel, should be 1 if not a detail map
         }
 
         for (int i = 0; i < blockCount; i++)
@@ -270,7 +270,7 @@ static inline void CCAT(ResolveGeoRoughness_, PIX_TYPE_IN)(PIX_TYPE_IN* imageIn,
         vec2s normals[4];
 
         float roughness[4];
-
+        float mult = detailMap == 1 ? 0.5f : 1.0f;
 #pragma omp simd
         for (int i = 0; i < 4; i++)
         {
@@ -286,7 +286,8 @@ static inline void CCAT(ResolveGeoRoughness_, PIX_TYPE_IN)(PIX_TYPE_IN* imageIn,
             float perceptualRougness = roughnessStrength * sqrtf(normalRoughness);
             // If this is a detail map, Z already contains overlay-blend perceptual smoothness information
             float detailSmoothness = fpixels[i].raw[swizzleMask.z];
-            roughness[i] = detailMap ? fmaxf(0.0f, detailSmoothness - 0.5f * perceptualRougness) : perceptualRougness;
+           
+            roughness[i] = detailMap ? fmaxf(0.0f, detailSmoothness - mult * perceptualRougness) : perceptualRougness;
         }
 
         vec4s outp[4];

@@ -47,7 +47,7 @@ fi
 njobs=`nproc`
 
 if [ -z $UNITY_PLUGIN_HEADERS ]; then
-    UNITY_PLUGIN_HEADERS="C:/Unity/6000.3.7f1/Editor/Data/PluginAPI"
+    UNITY_PLUGIN_HEADERS="C:/Unity/6000.3.20f1/Editor/Data/PluginAPI"
 fi
 
 # Android
