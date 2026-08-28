@@ -308,7 +308,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 else
                 {
                     builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
-                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Keep);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
                 }
                 /// END SLZ MODIFIED
 

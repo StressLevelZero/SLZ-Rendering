@@ -64,13 +64,32 @@ namespace UnityEngine.Rendering.Universal
             internal TextureHandle cameraColorAttachment;
         }
 
+        /// SLZ MODIFIED - Add shading rate image
+        internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle cameraColorAttachment, in TextureHandle cameraDepthAttachment, in TextureHandle shadingRateImage)
+        /*
         internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle cameraColorAttachment, in TextureHandle cameraDepthAttachment)
+        */
         {
             UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 
             using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, profilingSampler))
             {
+
+                /// SLZ MODIFIED - Use fragment shading rate image when available
+                if (shadingRateImage.IsValid())
+                {
+                    builder.SetShadingRateImageAttachment(shadingRateImage);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                else
+                {
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                /// END SLZ MODIFIED
+
                 passData.xr = cameraData.xr;
                 passData.cameraColorAttachment = cameraColorAttachment;
                 builder.SetRenderAttachment(cameraColorAttachment, 0);
