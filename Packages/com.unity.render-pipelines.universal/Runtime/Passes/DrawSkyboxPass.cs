@@ -78,7 +78,11 @@ namespace UnityEngine.Rendering.Universal
             passData.skyRendererListHandle = handle;
         }
 
+        /// SLZ MODIFIED - Add shading rate image
+        internal void Render(RenderGraph renderGraph, ContextContainer frameData, ScriptableRenderContext context, in TextureHandle colorTarget, in TextureHandle depthTarget, in TextureHandle shadingRateTexture, Material skyboxMaterial)
+        /*
         internal void Render(RenderGraph renderGraph, ContextContainer frameData, ScriptableRenderContext context, in TextureHandle colorTarget, in TextureHandle depthTarget, Material skyboxMaterial)
+        */
         {
             UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
@@ -96,6 +100,20 @@ namespace UnityEngine.Rendering.Universal
 
             using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, profilingSampler))
             {
+                /// SLZ MODIFIED - Use fragment shading rate image when available
+                if (shadingRateTexture.IsValid())
+                {
+                    builder.SetShadingRateImageAttachment(shadingRateTexture);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                else
+                {
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                /// END SLZ MODIFIED
+
                 var skyRendererListHandle = CreateSkyBoxRendererList(renderGraph, cameraData);
                 InitPassData(ref passData, cameraData.xr, skyRendererListHandle);
                 passData.material = skyboxMaterial;

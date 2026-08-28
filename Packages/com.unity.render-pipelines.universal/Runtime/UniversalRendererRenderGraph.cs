@@ -1162,7 +1162,11 @@ namespace UnityEngine.Rendering.Universal
 
 #if ENABLE_VR && ENABLE_XR_MODULE
             if (cameraData.xr.hasValidOcclusionMesh)
+            /// SLZ MODIFIED - Add shading rate image 
+                m_XROcclusionMeshPass.Render(renderGraph, frameData, resourceData.activeColorTexture, resourceData.activeDepthTexture, resourceData.cameraShadingRateTexture);
+            /*
                 m_XROcclusionMeshPass.Render(renderGraph, frameData, resourceData.activeColorTexture, resourceData.activeDepthTexture);
+            */
 #endif
 
             if (usesDeferredLighting)
@@ -1296,7 +1300,7 @@ namespace UnityEngine.Rendering.Universal
                 cameraData.camera.TryGetComponent(out Skybox cameraSkybox);
                 Material skyboxMaterial = cameraSkybox != null ? cameraSkybox.material : RenderSettings.skybox;
                 if (skyboxMaterial != null)
-                    m_DrawSkyboxPass.Render(renderGraph, frameData, context, resourceData.activeColorTexture, resourceData.activeDepthTexture, skyboxMaterial);
+                    m_DrawSkyboxPass.Render(renderGraph, frameData, context, resourceData.activeColorTexture, resourceData.activeDepthTexture, resourceData.cameraShadingRateTexture, skyboxMaterial);
             }
 
             if (depthCopySchedule == DepthCopySchedule.AfterSkybox)
