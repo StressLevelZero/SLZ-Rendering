@@ -13,6 +13,9 @@
 		#endif
 	#endif
 #endif
+#if defined(SHADER_API_MOBILE)
+#pragma instancing_options forcemaxcount:128
+#endif
 #define USE_DYNAMIC_BRANCH_FOG_KEYWORD 1
 //#pragma multi_compile_fragment _ _VOLUMETRICS_ENABLED
 //#pragma multi_compile_fog
