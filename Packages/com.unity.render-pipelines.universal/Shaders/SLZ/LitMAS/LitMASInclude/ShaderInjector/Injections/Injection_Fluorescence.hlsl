@@ -24,7 +24,10 @@
 
 //#!INJECT_BEGIN PRE_LIGHTING_CALC 0
 #if defined(_FLUORESCENCE)
+#warning TODO: Reimplement fluorescence in the new lighting system
+	/*
 	surfData.fluorescence = fluorescence;
 	surfData.absorbance = _FluorAbsorbance;
+	*/
 #endif
 //#!INJECT_END
