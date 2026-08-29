@@ -53,7 +53,7 @@ Shader "SLZ/LitMAS/LitMAS Posespace"
         Offset [_Slope], [_Offset]
 
 HLSLINCLUDE
-#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
 #define CBUFFER_PATH "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/ImpactsCBuffer.hlsl"
 ENDHLSL
 
@@ -178,7 +178,7 @@ ENDHLSL
         LOD 100
 
 HLSLINCLUDE
-#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
 #define CBUFFER_PATH "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/ImpactsCBuffer.hlsl"
 ENDHLSL
 

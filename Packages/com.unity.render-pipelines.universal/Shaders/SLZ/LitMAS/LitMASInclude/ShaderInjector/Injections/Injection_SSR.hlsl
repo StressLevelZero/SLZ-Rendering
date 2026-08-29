@@ -26,7 +26,7 @@
 
 //#!INJECT_BEGIN INCLUDES 0
 #if defined(_SSR_ENABLED)
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZLightingSSR.hlsl"
+//#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZLightingSSR.hlsl"
 #endif
 //#!INJECT_END
 
@@ -44,6 +44,9 @@
 
 //#!INJECT_BEGIN LIGHTING_CALC 0
     #if defined(_SSR_ENABLED)
+        #warning TODO: reimplement SSR
+        color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, (SLZ::DiffuseModelLambert)0);
+    /*
         float2 noiseScreenCoords = i.vertex.xy;
         half4 noiseRGBA = SSRGetInterleavedGradientNoise(noiseScreenCoords, _BlueNoise_Frame);
 
@@ -57,8 +60,9 @@
         ssrExtra.roughnessRange = half2(half(1.0) - _SSRSmoothnessRange.y, half(1.0) - _SSRSmoothnessRange.x);
         color = SLZPBRFragmentSSR(fragData, surfData, ssrExtra, _Surface);
         color.rgb = max(half(0), color.rgb);
+        */
     #else
-        color = SLZPBRFragment(fragData, surfData, _Surface);
+        color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, (SLZ::DiffuseModelLambert)0);
     #endif
 //#!INJECT_END
 
@@ -66,6 +70,6 @@
     #if !defined(_SSR_ENABLED)
       //  color = MixFogSurf(color, -fragData.viewDir, UNPACK_FOG(i), _Surface);
         
-        color = VolumetricsSurf(color, fragData.position, _Surface);
+        color = VolumetricsSurf(color, meshData.position, _Surface);
     #endif
 //#!INJECT_END
