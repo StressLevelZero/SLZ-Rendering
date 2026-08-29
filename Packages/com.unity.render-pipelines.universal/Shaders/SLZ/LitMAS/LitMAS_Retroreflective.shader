@@ -76,7 +76,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #define LITMAS_FEATURE_TS_NORMALS
             #define LITMAS_FEATURE_EMISSION
 
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
 
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/Retrorefl/RetroreflForward.hlsl"
 
@@ -96,7 +96,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #pragma only_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardDepthOnly.hlsl" 
 
             ENDHLSL
@@ -115,7 +115,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #pragma only_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardDepthNormals.hlsl" 
             ENDHLSL
         }
@@ -139,7 +139,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
 
             #pragma multi_compile _ _CASTING_PUNCTUAL_LIGHT_SHADOW
 
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardShadowCaster.hlsl"
             ENDHLSL
         }
@@ -162,7 +162,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #pragma fragment frag
 
             #define SHADERPASS SHADERPASS_META
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardMeta.hlsl" 
             ENDHLSL
         }
@@ -217,7 +217,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #define LITMAS_FEATURE_TS_NORMALS
             #define LITMAS_FEATURE_EMISSION
             #define LITMAS_FEATURE_SSR
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
            
             //#if defined(SHADER_API_DESKTOP)
             //#pragma require QuadShuffle
@@ -242,7 +242,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #pragma exclude_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardDepthOnly.hlsl" 
             ENDHLSL
         }
@@ -260,7 +260,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #pragma exclude_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardDepthNormals.hlsl" 
             ENDHLSL
         }
@@ -284,7 +284,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
 
             #pragma multi_compile _ _CASTING_PUNCTUAL_LIGHT_SHADOW
 
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardShadowCaster.hlsl"
             ENDHLSL
         }
@@ -307,7 +307,7 @@ Shader "SLZ/LitMAS/LitMAS Retroreflections"
             #pragma fragment frag
 
             #define SHADERPASS SHADERPASS_META
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardMeta.hlsl" 
             ENDHLSL
         }

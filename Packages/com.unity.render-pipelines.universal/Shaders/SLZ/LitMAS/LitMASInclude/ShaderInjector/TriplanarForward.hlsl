@@ -42,13 +42,14 @@
 
 #endif
 
-#if !defined(LITMAS_FEATURE_LIGHTMAPPING)
-#define _DISABLE_LIGHTMAPS
+#if defined(LITMAS_FEATURE_LIGHTMAPPING)
+#define R_LIGHTMAP_VARIANTS 1
+#else
+#define R_LIGHTMAP_VARIANTS 0
 #endif
 
 #define UNITY_UNIFIED_SHADER_PRECISION_MODEL
 
-#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DefaultLitVariants.hlsl"
 
 // Begin Injection UNIVERSAL_DEFINES from Injection_Triplanar.hlsl ----------------------------------------------------------
 	#pragma multi_compile_local_fragment _ _EXPENSIVE_TP
@@ -62,7 +63,15 @@
 	#endif
 // End Injection UNIVERSAL_DEFINES from Injection_Triplanar.hlsl ----------------------------------------------------------
 
+#define R_FOG 1
+#define R_INSTANCING 0
+#if (_SCREEN_SPACE_OCCLUSION_KEYWORD_DECLARED)
+#define BRANCH_SCREEN_SPACE_OCCLUSION _SCREEN_SPACE_OCCLUSION
+#else
+#define BRANCH_SCREEN_SPACE_OCCLUSION 0
+#endif
 
+#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/DefaultLitVariants.hlsl"
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/DXCVulkanExtensions.hlsl"
@@ -75,7 +84,7 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DBuffer.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/Editor/ShaderGraph/Includes/ShaderPass.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZLighting.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/SLZLighting.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZBlueNoise.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/VolumetricExtended.hlsl"
 
@@ -88,7 +97,7 @@
 // End Injection INCLUDES from Injection_Triplanar.hlsl ----------------------------------------------------------
 // Begin Injection INCLUDES from Injection_SSR.hlsl ----------------------------------------------------------
 #if defined(_SSR_ENABLED)
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZLightingSSR.hlsl"
+//#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZLightingSSR.hlsl"
 #endif
 // End Injection INCLUDES from Injection_SSR.hlsl ----------------------------------------------------------
 
@@ -124,6 +133,16 @@ struct VertOut
 };
 
 #define UNPACK_UV0(i) i.uv0XY_tanXY.xy
+#if defined(LIGHTMAP_ON)
+    #define UNPACK_LM_UV(i) i.uv1.xy
+#else
+    #define UNPACK_LM_UV(i) float2(0,0)
+#endif
+#if defined(DYNAMICLIGHTMAP_ON)
+    #define UNPACK_DYNLM_UV(i) i.uv1.zw
+#else
+    #define UNPACK_DYNLM_UV(i) float2(0,0)
+#endif
 #define UNPACK_NORMAL(i) i.normXYZ_tanZ.xyz
 #define UNPACK_TANGENT(i) half3(i.uv0XY_tanXY.zw, i.normXYZ_tanZ.w)
 #define UNPACK_BITANGENT_SIGN(i) i.SHVertLights_btSign.w
@@ -329,11 +348,30 @@ FragOut frag(VertOut i
     #endif
 
 
+    half3 viewDir = (half3)normalize(_WorldSpaceCameraPos - UNPACK_WPOS(i));
+    half3 NoV = dot(normalWS, viewDir);
+    SLZ::LightMeshData meshData;
+    {
+        meshData.position       = UNPACK_WPOS(i);
+        meshData.normal         = normalWS;
+        meshData.meshNormal     = UNPACK_NORMAL(i);
+        meshData.viewDir        = viewDir;
+        meshData.NoV            = NoV;
+        meshData.screenUV       = GetNormalizedScreenSpaceUV(i.vertex);
+        meshData.lightmapUV     = UNPACK_LM_UV(i);
+        meshData.dynLightmapUV  = UNPACK_DYNLM_UV(i);
+        meshData.shadowCoord    = (float4)0;
+        //meshData.shadowMask     = (half4)0;
+        meshData.vertexLighting = UNPACK_VERTLIGHTS(i);           
+    }
+
+    /*
     #if defined(LIGHTMAP_ON)
         SLZFragData fragData = SLZGetFragData(i.vertex, UNPACK_WPOS(i), normalWS, i.uv1.xy, i.uv1.zw, UNPACK_VERTLIGHTS(i));
     #else
         SLZFragData fragData = SLZGetFragData(i.vertex, UNPACK_WPOS(i), normalWS, float2(0, 0), float2(0, 0), UNPACK_VERTLIGHTS(i));
     #endif
+    */
     #if defined(SHADER_API_MOBILE)
         half antibandingNoise = AntibandingNoise(i.vertex.xy);
     #endif
@@ -345,19 +383,33 @@ FragOut frag(VertOut i
 	{
 		emission += SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, uv_main) * _EmissionColor;
 		emission.rgb *= lerp(albedo.rgb, half3(1, 1, 1), emission.a);
-		half emNoV = _EmissionFalloff >= half(0) ? abs(fragData.NoV) : half(1.0) - abs(fragData.NoV);
+		half emNoV = _EmissionFalloff >= half(0) ? abs(meshData.NoV) : half(1.0) - abs(meshData.NoV);
 		emission.rgb *= saturate(pow(emNoV, abs(_EmissionFalloff)));
 		emission = max(emission,half(0));
 	}
 // End Injection EMISSION from Injection_Emission.hlsl ----------------------------------------------------------
 
-
+    half perceptualRoughness = 1.0 - smoothness;
+    half roughness = perceptualRoughness * perceptualRoughness;
+    SLZ::LightPhysData physData;
+    {
+        physData.SetAlbedoAlpha(albedo.rgb, albedo.a);               
+        physData.SetSpecularF0RoughnessFromMetallic(metallic, roughness);
+        physData.emission              = emission.rgb;
+        physData.occlusion             = ao;
+        physData.surfaceType           = (min16uint)_Surface;
+    }
+    /*
     SLZSurfData surfData = SLZGetSurfDataMetallicGloss(albedo.rgb, saturate(metallic), saturate(smoothness), ao, emission.rgb, albedo.a);
+    */
     half4 color = half4(1, 1, 1, 1);
 
 
 // Begin Injection LIGHTING_CALC from Injection_SSR.hlsl ----------------------------------------------------------
     #if defined(_SSR_ENABLED)
+        #warning TODO: reimplement SSR
+        color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, (SLZ::DiffuseModelLambert)0);
+    /*
         float2 noiseScreenCoords = i.vertex.xy;
         half4 noiseRGBA = SSRGetInterleavedGradientNoise(noiseScreenCoords, _BlueNoise_Frame);
 
@@ -371,8 +423,9 @@ FragOut frag(VertOut i
         ssrExtra.roughnessRange = half2(half(1.0) - _SSRSmoothnessRange.y, half(1.0) - _SSRSmoothnessRange.x);
         color = SLZPBRFragmentSSR(fragData, surfData, ssrExtra, _Surface);
         color.rgb = max(half(0), color.rgb);
+        */
     #else
-        color = SLZPBRFragment(fragData, surfData, _Surface);
+        color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, (SLZ::DiffuseModelLambert)0);
     #endif
 // End Injection LIGHTING_CALC from Injection_SSR.hlsl ----------------------------------------------------------
 
@@ -381,7 +434,7 @@ FragOut frag(VertOut i
     #if !defined(_SSR_ENABLED)
       //  color = MixFogSurf(color, -fragData.viewDir, UNPACK_FOG(i), _Surface);
         
-        color = VolumetricsSurf(color, fragData.position, _Surface);
+        color = VolumetricsSurf(color, meshData.position, _Surface);
     #endif
 // End Injection VOLUMETRIC_FOG from Injection_SSR.hlsl ----------------------------------------------------------
     

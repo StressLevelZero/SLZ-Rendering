@@ -13,7 +13,7 @@ namespace SLZ.SLZEditorTools
     public static class InjectedIncludeMenuItem
     {
         const string defaultName = "injectedInclude.injinc";
-        [MenuItem("Assets/Create/Shader/Injected Include (new)")]
+        [MenuItem("Assets/Create/Shader/Injected Include")]
         static void MenuItem()
         {
             DoCreateInjInc action = new();
