@@ -7,9 +7,12 @@ TEXTURE2D(_RetroReflMap);
 //#!INJECT_END
 
 //#!INJECT_BEGIN PRE_LIGHTING_CALC 10
+	#warning TODO: Reimplement retroreflections as a lighting model struct
+	/*
 	surfData.retroReflPercent = _RetroReflIntensity * SAMPLE_TEXTURE2D(_RetroReflMap, sampler_BaseMap, uv0).r;
 	surfData.retroReflSharpness = _RetroReflSharpness;
 	#if defined(_FLUORESCENCE)
 		//surfData.fluorescence = saturate(surfData.fluorescence - 4 * surfData.retroReflPercent);
 	#endif
+	*/
 //#!INJECT_END

@@ -73,7 +73,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #define _SM6_QUAD 1
             #endif
 
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/TriplanarForward.hlsl"
             ENDHLSL
         }
@@ -92,7 +92,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/DepthOnly.hlsl" 
 
             ENDHLSL
@@ -111,7 +111,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #pragma only_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/TriplanarDepthNormals.hlsl" 
 
             ENDHLSL
@@ -135,7 +135,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile _ _CASTING_PUNCTUAL_LIGHT_SHADOW
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShadowCaster.hlsl" 
 
             ENDHLSL
@@ -161,7 +161,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #pragma shader_feature _ EDITOR_VISUALIZATION
 
             #define SHADERPASS SHADERPASS_META
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/TriplanarMeta.hlsl" 
             ENDHLSL
         }
@@ -217,7 +217,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             //#pragma require QuadShuffle
             //#define _SM6_QUAD 1
             //#endif
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/TriplanarForward.hlsl"
             ENDHLSL
         }
@@ -235,7 +235,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #pragma exclude_renderers vulkan            
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/DepthOnly.hlsl" 
 
             ENDHLSL
@@ -254,7 +254,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #pragma exclude_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/TriplanarDepthNormals.hlsl" 
 
             ENDHLSL
@@ -277,7 +277,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile _ _CASTING_PUNCTUAL_LIGHT_SHADOW
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShadowCaster.hlsl" 
 
             ENDHLSL
@@ -302,7 +302,7 @@ Shader "SLZ/LitMAS/LitMAS Triplanar"
             #pragma shader_feature _ EDITOR_VISUALIZATION
 
             #define SHADERPASS SHADERPASS_META
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/PlatformCompiler.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/TriplanarMeta.hlsl" 
             ENDHLSL
         }
