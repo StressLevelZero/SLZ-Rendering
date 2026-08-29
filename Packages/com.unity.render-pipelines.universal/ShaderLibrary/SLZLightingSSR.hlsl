@@ -21,12 +21,16 @@
 half4 CalcFogFactors(half3 viewDirectionWS, half fogFactor)
 {
     half4 fogFactors = half4(0, 0, 0, 0);
-#if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
-    fogFactors.w = ComputeFogIntensity(fogFactor);
-    fogFactors.xyz = MipFog(viewDirectionWS, fogFactor, 7);
-    //fogFactors = lerp(mipFog, fragColor, fogIntensity);
-#endif
-    return fogFactors;
+    if (FOG_LINEAR || FOG_EXP || FOG_EXP2)
+    {
+        fogFactors.w = ComputeFogIntensity(fogFactor);
+        fogFactors.xyz = MipFog(viewDirectionWS, fogFactor, 7);
+        //fogFactors = lerp(mipFog, fragColor, fogIntensity);
+    }
+    else
+    {
+        return fogFactors;
+    }
 }
 
 half3 invertFogLerp(half fogIntensity, half3 mipFog, half3 finalColor)

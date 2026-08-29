@@ -410,12 +410,15 @@ half3 MipFog(float3 viewDirectionWS, float depth, float numMipLevels) {
 
     float nearParam = _MipFogParameters.x;
     float farParam = _MipFogParameters.y;
-
-#if defined(FOG_LINEAR)
-    float mipLevel = ((depth )) * (_SkyMipCount - 1);
-#else
-    float mipLevel = ((1 -  (_MipFogParameters.z * saturate((depth - nearParam) / (farParam - nearParam)))  ) )  * (_SkyMipCount - 1);
-#endif
+    float mipLevel = 0;
+    if (FOG_LINEAR)
+    {
+        mipLevel = ((depth )) * (_SkyMipCount - 1);
+    }
+    else
+    {
+        mipLevel = ((1 -  (_MipFogParameters.z * saturate((depth - nearParam) / (farParam - nearParam)))  ) )  * (_SkyMipCount - 1);
+    }
 
 //#if defined(REFLECTIONFOG)
   //  return DecodeHDREnvironmentMip(SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, viewDirectionWS, mipLevel), unity_SpecCube0_HDR);

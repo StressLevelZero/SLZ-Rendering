@@ -7,7 +7,7 @@ TEXTURE2D(_EmissionMap);
 	{
 		emission += SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, uv_main) * _EmissionColor;
 		emission.rgb *= lerp(albedo.rgb, half3(1, 1, 1), emission.a);
-		half emNoV = _EmissionFalloff >= half(0) ? abs(fragData.NoV) : half(1.0) - abs(fragData.NoV);
+		half emNoV = _EmissionFalloff >= half(0) ? abs(meshData.NoV) : half(1.0) - abs(meshData.NoV);
 		emission.rgb *= saturate(pow(emNoV, abs(_EmissionFalloff)));
 		emission = max(emission,half(0));
 	}
