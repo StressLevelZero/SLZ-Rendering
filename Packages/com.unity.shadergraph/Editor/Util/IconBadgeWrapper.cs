@@ -10,20 +10,14 @@ namespace UnityEditor.ShaderGraph
         public static GraphViewIconBadge CreateError(string message)
         {
             var result = GraphViewIconBadge.CreateError(message);
-            /// SLZ MODIFIED - TEMP! m_ComputeTextBoundingBox does not exist in 6000.3.11, removing!
-            /*
             result.m_ComputeTextBoundingBox = false;
-            */
             return result;
         }
 
         public static GraphViewIconBadge CreateComment(string message)
         {
             var result = GraphViewIconBadge.CreateComment(message);
-            /// SLZ MODIFIED - TEMP! m_ComputeTextBoundingBox does not exist in 6000.3.11, removing!
-            /*
             result.m_ComputeTextBoundingBox = false;
-            */
             return result;
         }
     }
