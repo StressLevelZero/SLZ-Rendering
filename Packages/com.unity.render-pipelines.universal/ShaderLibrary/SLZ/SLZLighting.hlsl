@@ -575,10 +575,9 @@ namespace SLZ
 
         static half3 IblSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir, half2 fgd)
         {
-            #warning TODO: Make texture post processor to store LD in reflection probes so we can use the FGD Lut
             return 
-                //ProbeIblSpecularMultiscatterFGD(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd) 
-                ProbeIblSpecularNonPhys(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0())
+                ProbeIblSpecularMultiscatterFGD(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd) 
+                //ProbeIblSpecularNonPhys(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0())
                     * SpecularHorizonOcclusion(md.normal, md.meshNormal, reflectionDir)
                     ;
         }
