@@ -9,6 +9,7 @@ using Unity.Collections.LowLevel.Unsafe;
 
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
+using System.Runtime.InteropServices;
 
 namespace UnityEngine.Rendering.Universal.Internal
 {
@@ -70,6 +71,21 @@ namespace UnityEngine.Rendering.Universal.Internal
         float m_ZBinOffset;
         int m_LightCount;
         int m_BinCount;
+/// SLZ MODIFIED 2026-09-01 - Add arrays for fixed address lights
+        const int maxFixedLights = 4;
+        [StructLayout(LayoutKind.Explicit, Size = sizeof(float) * 69)]
+        unsafe struct FixedAddressLightsStruct
+        {
+            [FieldOffset(0  )] public fixed float _FixedLightPositions    [4 * maxFixedLights];
+            [FieldOffset(64 )] public fixed float _FixedLightColors       [4 * maxFixedLights];
+            [FieldOffset(128)] public fixed float _FixedLightAttenuations [4 * maxFixedLights];
+            [FieldOffset(192)] public fixed float _FixedLightSpotDirs     [4 * maxFixedLights];
+            [FieldOffset(256)] public uint4 _FixedLightIndices;
+            [FieldOffset(272)] public int _FixedLightCount;
+        }
+        readonly static int idFixedAddressLights = Shader.PropertyToID("FixedAddressLights");
+        static ComputeBuffer m_FixedAddressLightsBuffer;
+/// END SLZ MODIFIED
 
         internal struct InitParams
         {
@@ -132,6 +148,13 @@ namespace UnityEngine.Rendering.Universal.Internal
                 m_AdditionalLightSpotDirections = new Vector4[maxLights];
                 m_AdditionalLightOcclusionProbeChannels = new Vector4[maxLights];
                 m_AdditionalLightsLayerMasks = new float[maxLights];
+/// SLZ MODIFIED 2026-09-01 - Add arrays for fixed address lights
+                m_FixedAddressLightsBuffer = new ComputeBuffer(
+                    1,
+                    UnsafeUtility.SizeOf<FixedAddressLightsStruct>()
+                    , ComputeBufferType.Constant
+                );
+/// END SLZ MODIFIED
             }
 
             if (m_UseForwardPlus)
@@ -602,6 +625,10 @@ namespace UnityEngine.Rendering.Universal.Internal
             }
             m_LightCookieManager?.Dispose();
             m_LightCookieManager = null;
+
+            /// SLZ MODIFIED 2026-09-02 - Add fixed address lights
+            m_FixedAddressLightsBuffer?.Dispose();
+            /// END SLZ MODIFIED
         }
 
         void InitializeLightConstants(NativeArray<VisibleLight> lights, int lightIndex, bool supportsLightLayers, out Vector4 lightPos, out Vector4 lightColor, out Vector4 lightAttenuation, out Vector4 lightSpotDir, out Vector4 lightOcclusionProbeChannel, out uint lightLayerMask, out bool isSubtractive)
@@ -662,7 +689,11 @@ namespace UnityEngine.Rendering.Universal.Internal
             uint lightLayerMask;
             bool isSubtractive;
             InitializeLightConstants(lightData.visibleLights, lightData.mainLightIndex, supportsLightLayers, out lightPos, out lightColor, out lightAttenuation, out lightSpotDir, out lightOcclusionChannel, out lightLayerMask, out isSubtractive);
+            /// SLZ MODIFIED - Do not replace Light alpha with the subtractive flag. We use it directly as a UV channel for fluorescence
+            /* 
             lightColor.w = isSubtractive ? 0f : 1f;
+            */
+            /// END SLZ MODIFIED
 
             cmd.SetGlobalVector(LightConstantBuffer._MainLightPosition, lightPos);
             cmd.SetGlobalVector(LightConstantBuffer._MainLightColor, lightColor);
@@ -711,6 +742,12 @@ namespace UnityEngine.Rendering.Universal.Internal
                 }
                 else
                 {
+                    
+/// SLZ MODIFIED 2026-09-02 - Add fixed light array for quest
+                    int numFixed = 0;    
+                    uint4 fixedLightIndices = new uint4(0xFFFFFFFFu,0xFFFFFFFFu,0xFFFFFFFFu,0xFFFFFFFFu); 
+                    Span<FixedAddressLightsStruct> fixedLightStruct = stackalloc FixedAddressLightsStruct[1];
+/// END SLZ MODIFIED
                     for (int i = 0, lightIter = 0; i < lights.Length && lightIter < maxAdditionalLightsCount; ++i)
                     {
                         if (mainLight != i)
@@ -729,8 +766,48 @@ namespace UnityEngine.Rendering.Universal.Internal
 
                             if (supportsLightLayers)
                                 m_AdditionalLightsLayerMasks[lightIter] = math.asfloat(lightLayerMask);
-
+    
+/// SLZ MODIFIED 2026-08-31 - Do not replace Light alpha with the subtractive flag. We use it directly as a UV channel for fluorescence
+/* 
                             m_AdditionalLightColors[lightIter].w = isSubtractive ? 1f : 0f;
+*/
+/// END SLZ MODIFIED
+/// SLZ MODIFIED 2026-09-02 - Add fixed light array for quest
+                            if (lights[i].light.renderMode == LightRenderMode.ForcePixel && numFixed < maxFixedLights)
+                            {
+                                fixedLightIndices[numFixed] = (uint)i; 
+                                UniversalRenderPipeline.InitializeLightConstants_Common(lights, i, 
+                                out Vector4 fixedLightPos, 
+                                out Vector4 fixedLightColor, 
+                                out Vector4 fixedLightAttenuation, 
+                                out Vector4 fixedLightSpotDir, 
+                                out Vector4 fixedLightOcclusionProbeChannel);
+                                unsafe 
+                                {
+                                    fixedLightStruct[0]._FixedLightPositions    [4 * numFixed    ] = fixedLightPos.x; 
+                                    fixedLightStruct[0]._FixedLightPositions    [4 * numFixed + 1] = fixedLightPos.y; 
+                                    fixedLightStruct[0]._FixedLightPositions    [4 * numFixed + 2] = fixedLightPos.z; 
+                                    fixedLightStruct[0]._FixedLightPositions    [4 * numFixed + 3] = fixedLightPos.w; 
+
+                                    fixedLightStruct[0]._FixedLightColors       [4 * numFixed    ] = fixedLightColor.x; 
+                                    fixedLightStruct[0]._FixedLightColors       [4 * numFixed + 1] = fixedLightColor.y; 
+                                    fixedLightStruct[0]._FixedLightColors       [4 * numFixed + 2] = fixedLightColor.z; 
+                                    fixedLightStruct[0]._FixedLightColors       [4 * numFixed + 3] = fixedLightColor.w; 
+
+                                    fixedLightStruct[0]._FixedLightAttenuations [4 * numFixed    ] = fixedLightAttenuation.x; 
+                                    fixedLightStruct[0]._FixedLightAttenuations [4 * numFixed + 1] = fixedLightAttenuation.y; 
+                                    fixedLightStruct[0]._FixedLightAttenuations [4 * numFixed + 2] = fixedLightAttenuation.z; 
+                                    fixedLightStruct[0]._FixedLightAttenuations [4 * numFixed + 3] = fixedLightAttenuation.w; 
+
+                                    fixedLightStruct[0]._FixedLightSpotDirs     [4 * numFixed    ] = fixedLightSpotDir.x; 
+                                    fixedLightStruct[0]._FixedLightSpotDirs     [4 * numFixed + 1] = fixedLightSpotDir.y; 
+                                    fixedLightStruct[0]._FixedLightSpotDirs     [4 * numFixed + 2] = fixedLightSpotDir.z; 
+                                    fixedLightStruct[0]._FixedLightSpotDirs     [4 * numFixed + 3] = fixedLightSpotDir.w; 
+                                }
+                                numFixed++;
+/// END SLZ MODIFIED            
+                            }
+
                             lightIter++;
                         }
                     }
@@ -743,6 +820,13 @@ namespace UnityEngine.Rendering.Universal.Internal
 
                     if (supportsLightLayers)
                         cmd.SetGlobalFloatArray(LightConstantBuffer._AdditionalLightsLayerMasks, m_AdditionalLightsLayerMasks);
+
+/// SLZ MODIFIED 2026-09-02 - Add fixed light array for quest                    
+                    fixedLightStruct[0]._FixedLightIndices = fixedLightIndices;
+                    fixedLightStruct[0]._FixedLightCount = numFixed;
+                    cmd.SetBufferDataSpanExt<FixedAddressLightsStruct>(m_FixedAddressLightsBuffer, fixedLightStruct, 0, 0, 1);
+                    cmd.SetGlobalConstantBuffer(m_FixedAddressLightsBuffer, idFixedAddressLights, 0, m_FixedAddressLightsBuffer.count * m_FixedAddressLightsBuffer.stride);
+/// END SLZ MODIFIED 
                 }
 
                 cmd.SetGlobalVector(LightConstantBuffer._AdditionalLightsCount, new Vector4(lightData.maxPerObjectAdditionalLightsCount, 0.0f, 0.0f, 0.0f));
@@ -750,6 +834,12 @@ namespace UnityEngine.Rendering.Universal.Internal
             else
             {
                 cmd.SetGlobalVector(LightConstantBuffer._AdditionalLightsCount, Vector4.zero);
+/// SLZ MODIFIED 2026-09-02 - Add fixed light array for quest  
+                Span<FixedAddressLightsStruct> fixedLightStruct = stackalloc FixedAddressLightsStruct[1];
+                fixedLightStruct[0]._FixedLightCount = 0;
+                cmd.SetBufferDataSpanExt<FixedAddressLightsStruct>(m_FixedAddressLightsBuffer, fixedLightStruct, 0, 0, 1);
+                cmd.SetGlobalConstantBuffer(m_FixedAddressLightsBuffer, idFixedAddressLights, 0, m_FixedAddressLightsBuffer.count * m_FixedAddressLightsBuffer.stride);
+/// END SLZ MODIFIED 
             }
         }
 
