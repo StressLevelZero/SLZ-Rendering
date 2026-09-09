@@ -3,9 +3,6 @@ using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Experimental.Rendering;
-/// SLZ MODIFIED - Fix Mathf
-using Mathf = UnityEngine.BetterMathf;
-/// END SLZ MODIFIED
 
 /// <summary>
 /// Renders the on-tile post-processing stack.

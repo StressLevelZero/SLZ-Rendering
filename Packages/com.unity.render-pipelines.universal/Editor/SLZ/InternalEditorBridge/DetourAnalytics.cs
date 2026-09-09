@@ -18,7 +18,7 @@ namespace SLZ.SLZEditorTools
             MethodInfo fakeResult = ((Func<AnalyticsResult>)FakeWithResult).Method;
             MethodInfo fakeBoolResult = AsMethodInfoF(FakeBoolResult);
 
-            Detour.TryDetourFromTo(AsMethodInfoA<string>(EditorAnalytics.SendAnalyticsToEditor), fakeVoid);
+            //Detour.TryDetourFromTo(AsMethodInfoA<string>(EditorAnalytics.SendAnalyticsToEditor), fakeVoid);
             Detour.TryDetourFromTo(AsMethodInfoF(EditorAnalytics.RegisterEventEditorGameService), fakeBoolResult);
             Detour.TryDetourFromTo(((Func<Analytic, Assembly, AnalyticsResult>)EditorAnalytics.TryRegisterAnalytic).Method, fakeResult);
             Detour.TryDetourFromTo(((Func<Analytic, AnalyticsResult>)EditorAnalytics.TrySendAnalytic).Method, fakeResult);

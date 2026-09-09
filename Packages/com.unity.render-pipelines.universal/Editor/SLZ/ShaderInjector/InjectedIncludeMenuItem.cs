@@ -17,12 +17,12 @@ namespace SLZ.SLZEditorTools
         static void MenuItem()
         {
             DoCreateInjInc action = new();
-            ProjectWindowUtil.StartNameEditingIfProjectWindowExists(0, action, defaultName, null, null);
+            ProjectWindowUtil.StartNameEditingIfProjectWindowExists(EntityId.None, action, defaultName, null, null);
         }
 
-        internal class DoCreateInjInc : EndNameEditAction
+        internal class DoCreateInjInc : AssetCreationEndAction
         {
-            public override void Action(int instanceId, string pathName, string resourceFile)
+            public override void Action(EntityId instanceId, string pathName, string resourceFile)
             {
                 string hlslPath = pathName.Substring(0, pathName.LastIndexOf('.')) + ".hlsl";
                 string fullHlslPath = Path.GetFullPath(hlslPath);

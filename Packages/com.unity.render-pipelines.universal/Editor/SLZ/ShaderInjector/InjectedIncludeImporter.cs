@@ -22,14 +22,14 @@ namespace SLZ.SLZEditorTools
             InjectedIncludeAsset injInc = boxedInclude[0] as InjectedIncludeAsset;
             if (injInc != null)
             {
-                if (injInc.baseInclude.isSet) ctx.DependsOnSourceAsset(AssetDatabase.GetAssetPath(injInc.baseInclude.instanceID));
+                if (injInc.baseInclude.isSet) ctx.DependsOnSourceAsset(AssetDatabase.GetAssetPath(injInc.baseInclude.entityId));
                 foreach (LazyLoadReference<ShaderInclude> s in injInc.injectableIncludes)
                 {
-                    if (s.isSet) ctx.DependsOnSourceAsset(AssetDatabase.GetAssetPath(s.instanceID) );
+                    if (s.isSet) ctx.DependsOnSourceAsset(AssetDatabase.GetAssetPath(s.entityId) );
                 }
                 if (injInc.outputInclude.isSet)
                 {
-                    outputPath = AssetDatabase.GetAssetPath(injInc.outputInclude.instanceID);
+                    outputPath = AssetDatabase.GetAssetPath(injInc.outputInclude.entityId);
                     injInc.UpdateInjection();
                     AssetDatabase.ImportAsset(outputPath, ImportAssetOptions.Default);
                 }
@@ -217,16 +217,16 @@ namespace SLZ.SLZEditorTools
             {
                 InjectedIncludeAsset a = deserializedTargets[tIdx];
                 InjectedIncludeAsset b = deserializedTargets2[tIdx];
-                isModified = isModified || (a.baseInclude.instanceID != b.baseInclude.instanceID);
+                isModified = isModified || (a.baseInclude.entityId != b.baseInclude.entityId);
                 if (isModified) break;
-                isModified = isModified || (a.outputInclude.instanceID != b.outputInclude.instanceID);
+                isModified = isModified || (a.outputInclude.entityId != b.outputInclude.entityId);
                 if (isModified) break;
                 isModified = isModified || ((a.injectableIncludes == null) != (b.injectableIncludes == null)) || (a.injectableIncludes.Count != b.injectableIncludes.Count);
                 if (isModified) break;
                 int numInj = a.injectableIncludes.Count;
                 for (int jIdx = 0; jIdx < numInj; jIdx++)
                 {
-                    isModified = isModified || (a.injectableIncludes[jIdx].instanceID != b.injectableIncludes[jIdx].instanceID);
+                    isModified = isModified || (a.injectableIncludes[jIdx].entityId != b.injectableIncludes[jIdx].entityId);
                     if (isModified) goto end;
                 }
             }

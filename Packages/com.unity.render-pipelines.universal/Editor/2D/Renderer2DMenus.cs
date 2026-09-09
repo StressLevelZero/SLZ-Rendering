@@ -212,12 +212,8 @@ namespace UnityEditor.Rendering.Universal
         {
             Renderer2DMenus.Create2DRendererData((instance) =>
             {
-<<<<<<< HEAD
-                Analytics.RenderAssetAnalytic modifiedData = new Analytics.RenderAssetAnalytic(instance.GetEntityId(), true, 1, 2);
-=======
                 /*
-                Analytics.RenderAssetAnalytic modifiedData = new Analytics.RenderAssetAnalytic(instance.GetInstanceID(), true, 1, 2);
->>>>>>> 30646f6f80 (Nuked a bunch of analytics)
+                Analytics.RenderAssetAnalytic modifiedData = new Analytics.RenderAssetAnalytic(instance.GetEntityId(), true, 1, 2);
                 Analytics.Renderer2DAnalytics.instance.SendData(modifiedData);
                 */
             });
