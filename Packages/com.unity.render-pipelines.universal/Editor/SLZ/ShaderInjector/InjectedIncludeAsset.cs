@@ -28,8 +28,8 @@ namespace SLZ.SLZEditorTools
 			}
 
 			string projectDir = Path.GetDirectoryName(Application.dataPath);
-			string outputDir =  Path.GetFullPath(AssetDatabase.GetAssetPath(outputInclude.instanceID));
-			string baseDir =  Path.GetFullPath(AssetDatabase.GetAssetPath(baseInclude.instanceID));
+			string outputDir =  Path.GetFullPath(AssetDatabase.GetAssetPath(outputInclude.entityId));
+			string baseDir =  Path.GetFullPath(AssetDatabase.GetAssetPath(baseInclude.entityId));
 
 			List<LazyLoadReference<ShaderInclude>> injectionsCleaned = new List<LazyLoadReference<ShaderInclude>>();
             int numInjections = injectableIncludes.Count;
@@ -45,7 +45,7 @@ namespace SLZ.SLZEditorTools
 			string[] injectionDirs = new string[injectionsCleaned.Count];
 			for (int i = 0; i < injectionsCleaned.Count; i++)
 			{
-				string injProjPath = AssetDatabase.GetAssetPath(injectionsCleaned[i].instanceID);
+				string injProjPath = AssetDatabase.GetAssetPath(injectionsCleaned[i].entityId);
                 //Debug.Log($"Injection Path: {injProjPath}");
 				injectionDirs[i] = Path.GetFullPath(injProjPath);
 			}
