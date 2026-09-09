@@ -18,6 +18,8 @@
 #define R_LIGHTMAP_VARIANTS 0
 #endif
 
+
+
 #define UNITY_UNIFIED_SHADER_PRECISION_MODEL
 
 
@@ -32,6 +34,10 @@
 #endif
 
 #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/DefaultLitVariants.hlsl"
+
+#if defined(_ADDITIONAL_LIGHTS_VERTEX)
+#define SLZ_FIXED_ADDRESS_LIGHTS 1
+#endif
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/DXCVulkanExtensions.hlsl"
@@ -250,7 +256,7 @@ FragOut frag(VertOut i
     //#!INJECT_DEFAULT
     #if !defined(SHADER_API_MOBILE) && !defined(LITMAS_FEATURE_TP) // Specular antialiasing based on normal derivatives. Only on PC to avoid cost of derivatives on Quest
         //smoothness = min(smoothness, SLZGeometricSpecularAA(UNPACK_NORMAL(i)));
-        smoothness = SLZGeometricNormalFiltering(smoothness, UNPACK_NORMAL(i), /*variance*/ 0.075, /*threshold*/ 0.2);
+        smoothness = GeometricNormalFiltering(smoothness, UNPACK_NORMAL(i), /*variance*/ 0.075, /*threshold*/ 0.2);
     #endif
     //#!INJECT_END
 
