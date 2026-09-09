@@ -6,6 +6,7 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/FGD.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/FixedAddressLights.hlsl"
 
 namespace SLZ
 {
@@ -569,8 +570,22 @@ namespace SLZ
         static half3 PunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir, half2 fgd)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            half3 specular = ggxParams.NoL * SpecBrdfFp16KSK(ggxParams, ps.Roughness(), ps.SpecularF0());
+            half3 specular = saturate(ggxParams.NoL) * SpecBrdfFp16KSK(ggxParams, ps.Roughness(), ps.SpecularF0());
             return PunctualSpecularMultiscatterComp(specular, ps.SpecularF0(), fgd);
+        }
+
+        static half3 PunctualSpecular(LightMeshData md, LightPhysData ps, Light light, half2 fgd)
+        {
+            half attenuation = light.distanceAttenuation * light.shadowAttenuation;
+            if (attenuation < 1e-5)
+            {
+                return half3(0,0,0);
+            }
+            else
+            {
+                return PunctualSpecular(md, ps, light.direction, fgd) * 
+                    light.distanceAttenuation * light.shadowAttenuation * light.color.LIGHT_SWIZZLE;
+            }
         }
 
         static half3 IblSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir, half2 fgd)
@@ -613,8 +628,22 @@ namespace SLZ
         static half3 PunctualSpecular(LightMeshData md, LightPhysData ps, half3 lightDir, half2 fgd)
         {
             LagrangeGGXParams ggxParams = LagrangeGGXParams(md.normal, md.viewDir, lightDir);
-            half3 specular = ggxParams.NoL * SpecBrdfFp16(ggxParams, md.NoV, ps.Roughness(), ps.SpecularF0());
+            half3 specular = saturate(ggxParams.NoL) * SpecBrdfFp16(ggxParams, md.NoV, ps.Roughness(), ps.SpecularF0());
             return PunctualSpecularMultiscatterComp(specular, ps.SpecularF0(), fgd);
+        }
+
+        static half3 PunctualSpecular(LightMeshData md, LightPhysData ps, Light light, half2 fgd)
+        {
+            half attenuation = light.distanceAttenuation * light.shadowAttenuation;
+            if (attenuation < 1e-5)
+            {
+                return half3(0,0,0);
+            }
+            else
+            {
+                return PunctualSpecular(md, ps, light.direction, fgd) * 
+                    light.distanceAttenuation * light.shadowAttenuation * light.color.LIGHT_SWIZZLE;
+            }
         }
 
         
@@ -661,6 +690,20 @@ namespace SLZ
 
             half3 specular = ggxParams.NoL * SpecBrdfAnisoFp16(ggxParams, md.NoV, ps.roughnessT, ps.roughnessB, ps.anisoAspect, ps.visLambdaView, ps.SpecularF0());
             return  PunctualSpecularMultiscatterComp(specular, ps.SpecularF0(), fgd);
+        }
+
+        static half3 PunctualSpecular(LightMeshDataAniso md, LightPhysDataAniso ps, Light light, half2 fgd)
+        {
+            half attenuation = light.distanceAttenuation * light.shadowAttenuation;
+            if (attenuation < 1e-5)
+            {
+                return half3(1,0,1);
+            }
+            else
+            {
+                return PunctualSpecular(md, ps, light.direction, fgd) * 
+                    light.distanceAttenuation * light.shadowAttenuation * light.color.LIGHT_SWIZZLE;
+            }
         }
 
         static half3 IblSpecular(LightMeshDataAniso md, LightPhysDataAniso ps, half3 reflectionDir, half2 fgd)

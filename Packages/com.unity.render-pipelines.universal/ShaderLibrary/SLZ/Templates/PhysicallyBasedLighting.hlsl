@@ -29,7 +29,7 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
         physData.SetAlbedoAlpha(albedoAlpha.rgb * albedoAlpha.a, newAlpha);
     }
 
-    half3 diffuse = 0;
+    half3 diffuse = meshData.vertexLighting;
     half3 specular = 0;
     half2 FGD = SampleFgd(_FgdGgx, saturate(meshData.NoV), saturate(physData.PerceptualRoughness()));
 
@@ -83,9 +83,20 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
     if (any(mainLight.color > half(0.0)))
     {
         diffuse += diffuseModel.PunctualDiffuse(meshData, physData, mainLight.direction, float4(mainLight.color, 0));
+        specular += specularModel.PunctualSpecular(meshData, physData, mainLight, FGD);
     }
-
+    
     /// Additional Lights
+    #if defined(SLZ_FIXED_ADDRESS_LIGHTS)
+    for (int lIdx = 0; lIdx < MAX_FIXED_ADDRESS_LIGHTS; lIdx++)
+    {
+        if (lIdx >= _FixedLightCount) break;
+        Light fixedLight = GetFixedAddressAdditionalLight(lIdx, meshData.position);
+        diffuse += diffuseModel.PunctualDiffuse(meshData, physData, fixedLight.direction, float4(fixedLight.color, 0)) * fixedLight.distanceAttenuation;
+        specular += specularModel.PunctualSpecular(meshData, physData, fixedLight, FGD);
+    }
+    #endif
+
 
     return half4(diffuse * physData.AlbedoAlpha().rgb + specular, 1);
 }

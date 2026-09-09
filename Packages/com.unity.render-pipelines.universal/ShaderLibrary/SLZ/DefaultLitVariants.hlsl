@@ -131,7 +131,6 @@
 
 #if R_FOG
     // Always use dynamic branch fog, costs basically nothing and removes up to three keywords
-
     #define USE_DYNAMIC_BRANCH_FOG_KEYWORD 1
     #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
 #endif
@@ -152,34 +151,33 @@
 #endif
 
 
+#if !defined(SHADER_API_MOBILE)
 // soft shadows. Explicit low/med/high keywords unnecessary, the unqualified _SHADOWS_SOFT does a dynamic branch on the quality
-#pragma multi_compile_fragment _ _SHADOWS_SOFT //_SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
+#define _SHADOWS_SOFT 1 //_SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
 
 // Always use more than 1 cascade if there's shadows. Not worth adding another 
 // keyword for the 1 cascade case! This needs to be enforced in the project's settings
-#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
+#pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
 
-#pragma multi_compile _ SHADOWS_SHADOWMASK
-#if R_ADDITIONAL_LIGHTS_FRAG
-#pragma multi_compile_fragment _ _LIGHT_COOKIES
 #endif
 
+#pragma multi_compile _ SHADOWS_SHADOWMASK
+
 #if R_ADDITIONAL_LIGHTS_FRAG
-#pragma multi_compile_fragment _ _LIGHT_COOKIES
+    #pragma multi_compile_fragment _ _LIGHT_COOKIES
+    #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
 #endif
 
 #if R_ADDITIONAL_LIGHTS_FRAG == 1
     #pragma multi_compile _ _ADDITIONAL_LIGHTS
-    #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
 #elif R_ADDITIONAL_LIGHTS_FRAG == 2
-#define  _ADDITIONAL_LIGHTS 1
-    #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+    #define  _ADDITIONAL_LIGHTS 1
 #endif
 
 #if R_ADDITIONAL_LIGHTS_VTX == 1
     #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX
-#elif R_ADDITIONAL_LIGHTS_FRAG == 2
-#define _ADDITIONAL_LIGHTS_VERTEX 1
+#elif R_ADDITIONAL_LIGHTS_VTX == 2
+    #define _ADDITIONAL_LIGHTS_VERTEX 1
 #endif
 
 #if R_LIGHT_LAYERS == 1
