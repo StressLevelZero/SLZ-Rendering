@@ -5,6 +5,9 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Debug/Debugging3D.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
+/// SLZ MODIFIED 2026-09-02 - Add fixed address lights
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/FixedAddressLights.hlsl"
+/// END SLZ MODIFIED
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/AmbientOcclusion.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DBuffer.hlsl"
 
@@ -132,6 +135,11 @@ half3 VertexLighting(float3 positionWS, half3 normalWS)
     uint meshRenderingLayers = GetMeshRenderingLayer();
 
     LIGHT_LOOP_BEGIN(lightsCount)
+/// SLZ MODIFIED 2026-09-02 - Do not add important lights in the vertexLightColor
+#if defined(SLZ_FIXED_ADDRESS_LIGHTS)
+        if (any(lightIndex.xxxx == _FixedLightIndices)) continue;
+#endif
+/// END SLZ MODIFIED
         Light light = GetAdditionalLight(lightIndex, positionWS);
 
 #ifdef _LIGHT_LAYERS
