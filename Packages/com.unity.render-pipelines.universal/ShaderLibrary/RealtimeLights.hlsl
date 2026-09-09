@@ -14,6 +14,31 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Light.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.deprecated.hlsl"
 
+/// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
+#if defined(SLZ_LIGHT_ALPHA_AS_UV)
+    #define LIGHT_VEC min16float4
+    #define LIGHT_SWIZZLE rgba
+#else
+    #define LIGHT_VEC min16float3
+    #define LIGHT_SWIZZLE rgb
+#endif
+/// END SLZ MODIFIED 
+
+// Abstraction over Light shading data.
+struct Light
+{
+    half3   direction;
+    /// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
+    /*
+    half3   color;
+    */
+    LIGHT_VEC color;
+    /// END SLZ MODIFIED 
+    float   distanceAttenuation; // full-float precision required on some platforms
+    half    shadowAttenuation;
+    uint    layerMask;
+};
+
 /// SLZ MODIFIED - Light alpha now stores UV, not subtractive flag
 /*
 #if USE_CLUSTER_LIGHT_LOOP
@@ -110,12 +135,26 @@ Light GetMainLight()
     Light light;
     light.direction = half3(_MainLightPosition.xyz);
 #if USE_CLUSTER_LIGHT_LOOP
+#if defined(LIGHTMAP_ON) && defined(LIGHTMAP_SHADOW_MIXING)
+/// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
+    /*
     light.distanceAttenuation = (LightmapAvailable() && LightmapShadowMixingAvailable()) ? _MainLightColor.a : 1.0;
+    */
+    light.distanceAttenuation = 1.0;
+/// END SLZ MODIFIED
+#else
+    light.distanceAttenuation = 1.0;
+#endif
 #else
     light.distanceAttenuation = unity_LightData.z; // unity_LightData.z is 1 when not culled by the culling mask, otherwise 0.
 #endif
     light.shadowAttenuation = 1.0;
+/// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
+    /*
     light.color = _MainLightColor.rgb;
+    */
+    light.color = _MainLightColor.LIGHT_SWIZZLE;
+/// END SLZ MODIFIED
 
     light.layerMask = _MainLightLayerMask;
 
@@ -161,7 +200,12 @@ Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
 {
     // Abstraction over Light input constants
     float4 lightPositionWS = _AdditionalLightsPosition[perObjectLightIndex];
+/// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
+    /*
     half3 color = _AdditionalLightsColor[perObjectLightIndex].rgb;
+    */
+    LIGHT_VEC color = _AdditionalLightsColor[perObjectLightIndex].LIGHT_SWIZZLE;
+/// END SLZ MODIFIED
     half4 distanceAndSpotAttenuation = _AdditionalLightsAttenuation[perObjectLightIndex];
     half4 spotDirection = _AdditionalLightsSpotDir[perObjectLightIndex];
     uint lightLayerMask = asuint(_AdditionalLightsLayerMasks[perObjectLightIndex]);
