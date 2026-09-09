@@ -16,6 +16,10 @@ using UnityEngine.UIElements;
 using UnityEditor.VFX;
 #endif
 
+/// TEMP SLZ MODIFIED - Unity Graphics repo not yet up to date for 6.7 alpha
+using RenderType = UnityEditor.ShaderGraph.RenderType;
+/// END SLZ MODIFIED
+
 namespace UnityEditor.Rendering.Universal.ShaderGraph
 {
     /// <summary>

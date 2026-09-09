@@ -9,6 +9,9 @@ using UnityEditor.ShaderGraph;
 using UnityEditor.ShaderGraph.Legacy;
 using UnityEditor.ShaderGraph.Serialization;
 
+/// SLZ MODIFIED 2026-09-08 - fixes for issues introduced by rebase 
+using RenderType = UnityEditor.ShaderGraph.RenderType;
+/// END SLZ MODIFIED
 
 namespace UnityEditor.Rendering.BuiltIn.ShaderGraph
 {
