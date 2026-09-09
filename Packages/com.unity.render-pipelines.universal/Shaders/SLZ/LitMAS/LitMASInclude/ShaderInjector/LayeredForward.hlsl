@@ -23,6 +23,8 @@
 #define R_LIGHTMAP_VARIANTS 0
 #endif
 
+
+
 #define UNITY_UNIFIED_SHADER_PRECISION_MODEL
 
 
@@ -36,6 +38,10 @@
 #endif
 
 #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/DefaultLitVariants.hlsl"
+
+#if defined(_ADDITIONAL_LIGHTS_VERTEX)
+#define SLZ_FIXED_ADDRESS_LIGHTS 1
+#endif
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/DXCVulkanExtensions.hlsl"
