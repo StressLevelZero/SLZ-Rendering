@@ -1118,7 +1118,7 @@ namespace UnityEngine.Rendering.Universal
                     // In the case of a partial prepass, the global will be set later by the gbuffer pass once it completes the data in the texture.
                     bool setGlobalTextures = isLastPass && hasFullPrepass;
 
-                    if (isDepthNormalPrepass)
+                    if (isLastPass && isDepthNormalPrepass)
                     {
                         // We set camera properties once per execution of the URP render graph, y-flip status is determined based on whether we are rendering to the backbuffer or not.
                         // DepthNormal prepass always renders to an intermediate render target which is assumed to be y-flipped by all other logic in our codebase.
