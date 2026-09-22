@@ -1406,7 +1406,12 @@ namespace UnityEngine.Rendering.Universal
         // Holds light direction for directional lights or position for punctual lights.
         // When w is set to 1.0, it means it's a punctual light.
         static readonly Vector4 k_DefaultLightPosition = new Vector4(0.0f, 0.0f, 1.0f, 0.0f);
+        /// SLZ MODIFIED 2026-09-18 - Can't use Color.black for default light color as that has an alpha of 1.
+        /*
         static readonly Vector4 k_DefaultLightColor = Color.black;
+        */
+        static readonly Vector4 k_DefaultLightColor = Vector4.zero;
+        /// END SLZ MODIFIED
 
         // Default light attenuation is setup in a particular way that it causes
         // directional lights to return 1.0 for both distance and angle attenuation

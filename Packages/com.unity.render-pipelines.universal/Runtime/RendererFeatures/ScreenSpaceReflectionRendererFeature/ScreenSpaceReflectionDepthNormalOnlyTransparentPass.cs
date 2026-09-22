@@ -76,7 +76,12 @@ namespace UnityEngine.Rendering.Universal
 
             if (ssrData.depthTransparentTexture.IsValid() && ssrData.normalTransparentTexture.IsValid())
             {
+                /// SLZ MODIFIED 2026-09-10 - we modified the depthnormals to take a shading rate texture
+                /*
                 Render(renderGraph, frameData, ssrData.normalTransparentTexture, ssrData.depthTransparentTexture, TextureHandle.nullHandle, uint.MaxValue, false, false, false);
+                */
+                Render(renderGraph, frameData, ssrData.normalTransparentTexture, ssrData.depthTransparentTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, uint.MaxValue, false, false, false);
+                /// END SLZ MODIFIED
             }
         }
     }
