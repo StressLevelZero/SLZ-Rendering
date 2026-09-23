@@ -90,7 +90,6 @@ Shader "SLZ/LitMAS/LitMAS Layered"
             Tags {"Lightmode"="UniversalForward"}
             HLSLPROGRAM
             
-            #pragma only_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 5.0
@@ -127,7 +126,7 @@ Shader "SLZ/LitMAS/LitMAS Layered"
             ColorMask 0
 
             HLSLPROGRAM
-            #pragma only_renderers vulkan
+
             #pragma vertex vert
             #pragma fragment frag
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
@@ -146,7 +145,6 @@ Shader "SLZ/LitMAS/LitMAS Layered"
             //ColorMask 0
 
             HLSLPROGRAM
-            #pragma only_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
@@ -167,7 +165,6 @@ Shader "SLZ/LitMAS/LitMAS Layered"
             ColorMask 0
 
             HLSLPROGRAM
-            #pragma only_renderers vulkan
             #pragma vertex vert
             #pragma fragment frag
 
@@ -187,7 +184,6 @@ Shader "SLZ/LitMAS/LitMAS Layered"
             Cull Off
 
             HLSLPROGRAM
-            #pragma only_renderers vulkan
             #define _NORMAL_DROPOFF_TS 1
             #define _EMISSION
             #define _NORMALMAP 1
@@ -207,156 +203,9 @@ Shader "SLZ/LitMAS/LitMAS Layered"
             Name "BakedRaytrace"
             Tags{ "LightMode" = "BakedRaytrace" }
             HLSLPROGRAM
-            #pragma only_renderers vulkan
+
             #pragma multi_compile _ _EMISSION_ON
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardBakedRT.hlsl"
-
-            ENDHLSL
-        }
-    }
-
- // Duplicate subshader for DX11, since using '#pragma require' automatically marks the whole subshader as invalid for dx11 even if its guarded by an API define
-    SubShader
-    {
-
-        HLSLINCLUDE
-        #define LITMAS_FORCE_REIMPORT 1
-        #define CBUFFER_PATH "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/LayeredCBuffer.hlsl"
-        ENDHLSL
-
-        Tags {"RenderPipeline" = "UniversalPipeline"  "RenderType" = "Opaque" "Queue" = "Geometry" }
-        
-        ZTest LEqual
-        Offset 0 , 0
-        ColorMask RGBA
-        LOD 100
-
-        HLSLINCLUDE
-        //
-        ENDHLSL
-
-        Pass
-        {
-            Blend [_BlendSrc] [_BlendDst]
-            ZWrite [_ZWrite]
-            Cull [_Cull]
-            Name "Forward"
-            Tags {"Lightmode"="UniversalForward"}
-
-            HLSLPROGRAM
-            #pragma exclude_renderers vulkan
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma target 5.0
-
-            #define LITMAS_FEATURE_LIGHTMAPPING
-            #define LITMAS_FEATURE_TS_NORMALS
-            #define LITMAS_FEATURE_EMISSION
-            #define LITMAS_FEATURE_SSR
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
-           
-            //#if defined(SHADER_API_DESKTOP)
-            //#pragma require QuadShuffle
-            //#define _SM6_QUAD 1
-            //#endif
-
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/LayeredForward.hlsl"
-
-            ENDHLSL
-        }
-
-        Pass
-        {
-
-            Name "DepthOnly"
-            Tags {"Lightmode"="DepthOnly"}
-            ZWrite [_ZWrite]
-            Cull [_Cull]
-            ColorMask 0
-
-            HLSLPROGRAM
-            #pragma exclude_renderers vulkan
-            #pragma vertex vert
-            #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardDepthOnly.hlsl" 
-            ENDHLSL
-        }
-
-        Pass
-        {
-            Name "DepthNormals"
-            Tags {"Lightmode" = "DepthNormals"}
-            ZWrite [_ZWrite]
-            Cull [_Cull]
-            //ZTest Off
-            //ColorMask 0
-
-            HLSLPROGRAM
-            #pragma exclude_renderers vulkan
-            #pragma vertex vert
-            #pragma fragment frag
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/LayeredDepthNormals.hlsl" 
-            ENDHLSL
-        }
-
-        Pass
-        {
-            
-            Name "ShadowCaster"
-            Tags { "LightMode"="ShadowCaster" }
-
-            ZWrite [_ZWrite]
-            ZTest LEqual
-            
-            Cull [_Cull]
-            ColorMask 0
-
-            HLSLPROGRAM
-            #pragma exclude_renderers vulkan
-            #pragma vertex vert
-            #pragma fragment frag
-
-            #pragma multi_compile _ _CASTING_PUNCTUAL_LIGHT_SHADOW
-
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/StandardShadowCaster.hlsl"
-            ENDHLSL
-        }
-
-        Pass
-        {
-            Name "Meta"
-            Tags { "LightMode" = "Meta" }
-            Blend [_BlendSrc] [_BlendDst]
-            ZWrite [_ZWrite]
-            Cull Off
-
-            HLSLPROGRAM
-            #pragma exclude_renderers vulkan
-            #define _NORMAL_DROPOFF_TS 1
-            #define _EMISSION
-            #define _NORMALMAP 1
-
-            #pragma vertex vert
-            #pragma fragment frag
-
-            #define SHADERPASS SHADERPASS_META
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/PlatformCompiler.hlsl"
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/LayeredMeta.hlsl" 
-            ENDHLSL
-        }
-
-        Pass
-        {
-            
-            Name "BakedRaytrace"
-            Tags{ "LightMode" = "BakedRaytrace" }
-            HLSLPROGRAM
-            #pragma exclude_renderers vulkan
-            #pragma multi_compile _ _EMISSION_ON
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/SLZ/LitMAS/LitMASInclude/ShaderInjector/BakedRTBase.hlsl"
 
             ENDHLSL
         }

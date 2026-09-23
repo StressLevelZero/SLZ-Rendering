@@ -10,10 +10,10 @@
 
 /// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
 #if defined(SLZ_LIGHT_ALPHA_AS_UV)
-    #define LIGHT_VEC min16float4
+    #define LIGHT_VEC half4
     #define LIGHT_SWIZZLE rgba
 #else
-    #define LIGHT_VEC min16float3
+    #define LIGHT_VEC half3
     #define LIGHT_SWIZZLE rgb
 #endif
 /// END SLZ MODIFIED 
@@ -129,7 +129,7 @@ Light GetMainLight()
     /*
     light.color = _MainLightColor.rgb;
     */
-    light.color = _MainLightColor.LIGHT_SWIZZLE;
+    light.color = (LIGHT_VEC)_MainLightColor.LIGHT_SWIZZLE;
 /// END SLZ MODIFIED
 
     light.layerMask = _MainLightLayerMask;

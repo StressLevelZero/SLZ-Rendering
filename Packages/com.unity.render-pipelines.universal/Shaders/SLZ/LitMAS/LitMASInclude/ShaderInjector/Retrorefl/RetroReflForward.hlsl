@@ -49,10 +49,18 @@
 // End Injection UNIVERSAL_DEFINES from Injection_Retroreflections.hlsl ----------------------------------------------------------
 // Begin Injection UNIVERSAL_DEFINES from Injection_Fluorescence.hlsl ----------------------------------------------------------
 #pragma shader_feature_local_fragment _FLUORESCENCE
+#if defined(_FLUORESCENCE)
+#define SLZ_FLUORESCENCE 1
+#define SLZ_LIGHT_ALPHA_AS_UV 1
+#endif
 // End Injection UNIVERSAL_DEFINES from Injection_Fluorescence.hlsl ----------------------------------------------------------
 
 #define R_FOG 1
 #define R_INSTANCING 0
+#if !defined(SHADER_API_MOBILE)
+   #define R_DOTS_INSTANCING 1 
+#endif
+
 #if (_SCREEN_SPACE_OCCLUSION_KEYWORD_DECLARED)
 #define BRANCH_SCREEN_SPACE_OCCLUSION _SCREEN_SPACE_OCCLUSION
 #else
@@ -87,6 +95,9 @@
 // Begin Injection INCLUDES from Injection_DetailMap.hlsl ----------------------------------------------------------
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Detailmaps.hlsl"
 // End Injection INCLUDES from Injection_DetailMap.hlsl ----------------------------------------------------------
+// Begin Injection INCLUDES from Injection_Retroreflections.hlsl ----------------------------------------------------------
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/LightModelRetroRefl.hlsl"
+// End Injection INCLUDES from Injection_Retroreflections.hlsl ----------------------------------------------------------
 
 
 struct VertIn
@@ -120,7 +131,7 @@ struct VertOut
 };
 
 #define UNPACK_UV0(i) i.uv0XY_tanXY.xy
-#if defined(LIGHTMAP_ON)
+#if defined(LIGHTMAP_ON) || defined(DIRLM_COMBINED)
     #define UNPACK_LM_UV(i) i.uv1.xy
 #else
     #define UNPACK_LM_UV(i) float2(0,0)
@@ -340,9 +351,10 @@ FragOut frag(VertOut i
 
     half3 viewDir = (half3)normalize(_WorldSpaceCameraPos - UNPACK_WPOS(i));
     half3 NoV = dot(normalWS, viewDir);
+    
     SLZ::LightMeshData meshData;
     {
-        meshData.position       = UNPACK_WPOS(i);
+        meshData.positionWS     = UNPACK_WPOS(i);
         meshData.normal         = normalWS;
         meshData.meshNormal     = UNPACK_NORMAL(i);
         meshData.viewDir        = viewDir;
@@ -351,17 +363,9 @@ FragOut frag(VertOut i
         meshData.lightmapUV     = UNPACK_LM_UV(i);
         meshData.dynLightmapUV  = UNPACK_DYNLM_UV(i);
         meshData.shadowCoord    = (float4)0;
-        //meshData.shadowMask     = (half4)0;
-        meshData.vertexLighting = UNPACK_VERTLIGHTS(i);           
+        meshData.vertexLighting = UNPACK_VERTLIGHTS(i);
     }
-
-    /*
-    #if defined(LIGHTMAP_ON)
-        SLZFragData fragData = SLZGetFragData(i.vertex, UNPACK_WPOS(i), normalWS, i.uv1.xy, i.uv1.zw, UNPACK_VERTLIGHTS(i));
-    #else
-        SLZFragData fragData = SLZGetFragData(i.vertex, UNPACK_WPOS(i), normalWS, float2(0, 0), float2(0, 0), UNPACK_VERTLIGHTS(i));
-    #endif
-    */
+    
     #if defined(SHADER_API_MOBILE)
         half antibandingNoise = AntibandingNoise(i.vertex.xy);
     #endif
@@ -381,45 +385,38 @@ FragOut frag(VertOut i
 
     half perceptualRoughness = 1.0 - smoothness;
     half roughness = perceptualRoughness * perceptualRoughness;
-    SLZ::LightPhysData physData;
+
+// Begin Injection PHYSDATA_TYPE from Injection_Retroreflections.hlsl ----------------------------------------------------------
+	SLZ::LightPhysDataRetroRefl physData;
+// End Injection PHYSDATA_TYPE from Injection_Retroreflections.hlsl ----------------------------------------------------------
     {
         physData.SetAlbedoAlpha(albedo.rgb, albedo.a);               
         physData.SetSpecularF0RoughnessFromMetallic(metallic, roughness);
         physData.emission              = emission.rgb;
         physData.occlusion             = ao;
         physData.surfaceType           = (min16uint)_Surface;
+// Begin Injection PHYSDATA_POPULATE_EXTRA from Injection_Retroreflections.hlsl ----------------------------------------------------------
+	physData.retroReflPercent = _RetroReflIntensity * SAMPLE_TEXTURE2D(_RetroReflMap, sampler_BaseMap, uv0).r;
+	physData.retroReflSharpness = _RetroReflSharpness;
+// End Injection PHYSDATA_POPULATE_EXTRA from Injection_Retroreflections.hlsl ----------------------------------------------------------
     }
-    /*
-    SLZSurfData surfData = SLZGetSurfDataMetallicGloss(albedo.rgb, saturate(metallic), saturate(smoothness), ao, emission.rgb, albedo.a);
-    */
+
     half4 color = half4(1, 1, 1, 1);
 
 // Begin Injection PRE_LIGHTING_CALC from Injection_Fluorescence.hlsl ----------------------------------------------------------
 #if defined(_FLUORESCENCE)
-#warning TODO: Reimplement fluorescence in the new lighting system
-	/*
-	surfData.fluorescence = fluorescence;
-	surfData.absorbance = _FluorAbsorbance;
-	*/
+	physData.fluorColor = fluorescence;
+	physData.fluorAbsorbance = _FluorAbsorbance;
 #endif
 // End Injection PRE_LIGHTING_CALC from Injection_Fluorescence.hlsl ----------------------------------------------------------
-// Begin Injection PRE_LIGHTING_CALC from Injection_Retroreflections.hlsl ----------------------------------------------------------
-	#warning TODO: Reimplement retroreflections as a lighting model struct
-	/*
-	surfData.retroReflPercent = _RetroReflIntensity * SAMPLE_TEXTURE2D(_RetroReflMap, sampler_BaseMap, uv0).r;
-	surfData.retroReflSharpness = _RetroReflSharpness;
-	#if defined(_FLUORESCENCE)
-		//surfData.fluorescence = saturate(surfData.fluorescence - 4 * surfData.retroReflPercent);
-	#endif
-	*/
-// End Injection PRE_LIGHTING_CALC from Injection_Retroreflections.hlsl ----------------------------------------------------------
 
-        color =  SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, (SLZ::DiffuseModelLambert)0);
-        //color = SLZPBRFragment(fragData, surfData, _Surface);
+// Begin Injection LIGHTING_CALC from Injection_Retroreflections.hlsl ----------------------------------------------------------
+	color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelRetroRefl)0, (SLZ::DiffuseModelRetroRefl)0);
+// End Injection LIGHTING_CALC from Injection_Retroreflections.hlsl ----------------------------------------------------------
 
 
     //color = MixFogSurf(color, -fragData.viewDir, UNPACK_FOG(i), _Surface);
-    color = VolumetricsSurf(color, meshData.position, _Surface);
+    color = VolumetricsSurf(color, meshData.positionWS, _Surface);
     
     FragOut output = (FragOut) 0;
     output.color = color;

@@ -13,20 +13,15 @@
     COMPILER_MACRO(#, define HLSL_2021)
     COMPILER_MACRO(#, endif)
 
-
-    #define PARAMS3 (a,b,c)
-    #define PAREN_RIGHT )
-    #define COMMA ,
-
     #if SLZ_DXC_VERSION_MAJOR > 1 || SLZ_DXC_VERSION_MINOR >= 8
         #define TEMPLATES_SUPPORTED
     #endif
 
     COMPILER_MACRO(#, if __HLSL_VERSION < 2021)
     
-    #if SLZ_DXC_VERSION_MAJOR > 1 || SLZ_DXC_VERSION_MINOR >= 8
+    #if SLZ_DXC_VERSION_MAJOR != 1 || SLZ_DXC_VERSION_MINOR != 10 || SLZ_DXC_VERSION_PATCH != 0 || SLZ_DXC_VERSION_PATCH != 1
 
-    COMPILER_MACRO(#, error DXCUpdateState.hlsl is invalid! Claims DXC version SLZ_DXC_VERSION_MAJOR SLZ_DXC_VERSION_MINOR SLZ_DXC_VERSION_PATCH SLZ_DXC_VERSION_BUILD but the hlsl version is less than 2021 indicating the old 1.6 or 1.7 compiler is being used )
+    COMPILER_MACRO(#, error DXCUpdateState.hlsl is invalid! Claims DXC version SLZ_DXC_VERSION_MAJOR . SLZ_DXC_VERSION_MINOR . SLZ_DXC_VERSION_PATCH . SLZ_DXC_VERSION_BUILD but the hlsl version is less than 2021 indicating the original 1.10.0.1 compiler is being used.)
 
     #endif
 

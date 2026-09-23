@@ -105,12 +105,17 @@ namespace SLZ.DXCUpdater
                     return false;
                 }
             }
-
+            uint versionPacked = 
+                ((major & 0x1F) << 27) | 
+                ((minor & 0x1F) << 22) | 
+                ((patch & 0x1F) << 17) |
+                ((build & 0x1FFFF)); 
             string comment = patched ? "" : "//";
             string file =
                 $"#ifndef SLZ_DXC_STATE\n" +
                 $"\t#define SLZ_DXC_STATE\n" +
                 $"\t{comment}#define SLZ_DXC_UPDATED\n" +
+                $"\t{comment}#define SLZ_DXC_VERSION       {versionPacked}\n" +
                 $"\t{comment}#define SLZ_DXC_VERSION_MAJOR {major}\n" +
                 $"\t{comment}#define SLZ_DXC_VERSION_MINOR {minor}\n" +
                 $"\t{comment}#define SLZ_DXC_VERSION_PATCH {patch}\n" +

@@ -118,7 +118,12 @@ half3 LightingPhysicallyBased(BRDFData brdfData, Light light, half3 normalWS, ha
 half3 LightingPhysicallyBased(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS, float lightAttenuation, half3 normalWS, half3 viewDirectionWS)
 {
     Light light;
+    /// SLZ MODIFIED 2026-09-18 - light can be a half4 when SLZ_LIGHT_ALPHA_AS_UV is defined, specify rgb swizzle 
+    /*
     light.color = lightColor;
+    */
+    light.color.rgb = lightColor;
+    /// END SLZ MODIFIED
     light.direction = lightDirectionWS;
     light.distanceAttenuation = lightAttenuation;
     light.shadowAttenuation   = 1;
@@ -134,7 +139,12 @@ half3 LightingPhysicallyBased(BRDFData brdfData, Light light, half3 normalWS, ha
 half3 LightingPhysicallyBased(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS, float lightAttenuation, half3 normalWS, half3 viewDirectionWS, bool specularHighlightsOff)
 {
     Light light;
+    /// SLZ MODIFIED 2026-09-18 - light can be a half4 when SLZ_LIGHT_ALPHA_AS_UV is defined, specify rgb swizzle 
+    /*
     light.color = lightColor;
+    */
+    light.color.rgb = lightColor;
+    /// END SLZ MODIFIED
     light.direction = lightDirectionWS;
     light.distanceAttenuation = lightAttenuation;
     light.shadowAttenuation   = 1;
