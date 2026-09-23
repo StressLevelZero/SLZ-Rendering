@@ -1,5 +1,9 @@
 //#!INJECT_BEGIN UNIVERSAL_DEFINES 1
 #pragma shader_feature_local_fragment _FLUORESCENCE
+#if defined(_FLUORESCENCE)
+#define SLZ_FLUORESCENCE 1
+#define SLZ_LIGHT_ALPHA_AS_UV 1
+#endif
 //#!INJECT_END
 
 //#!INJECT_BEGIN UNIFORMS 0
@@ -24,10 +28,7 @@
 
 //#!INJECT_BEGIN PRE_LIGHTING_CALC 0
 #if defined(_FLUORESCENCE)
-#warning TODO: Reimplement fluorescence in the new lighting system
-	/*
-	surfData.fluorescence = fluorescence;
-	surfData.absorbance = _FluorAbsorbance;
-	*/
+	physData.fluorColor = fluorescence;
+	physData.fluorAbsorbance = _FluorAbsorbance;
 #endif
 //#!INJECT_END

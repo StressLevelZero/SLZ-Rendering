@@ -177,7 +177,12 @@ half3 SampleLightmap(float2 staticLightmapUV, float2 dynamicLightmapUV, half3 no
     // the compiler will optimize the transform away.
     half4 transformCoords = half4(1, 1, 0, 0);
 
+    /// SLZ MODIFIED 2026-09-11 - Fix type conversion from float3 to min16float3 
+    /*
     float3 diffuseLighting = 0;
+    */
+    half3 diffuseLighting = 0;
+    /// END SLZ MODIFIED
 
 #if defined(LIGHTMAP_ON) && defined(DIRLIGHTMAP_COMBINED)
     diffuseLighting = SampleDirectionalLightmap(TEXTURE2D_LIGHTMAP_ARGS(LIGHTMAP_NAME, LIGHTMAP_SAMPLER_NAME),

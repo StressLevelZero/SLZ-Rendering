@@ -68,8 +68,8 @@
 
 //#!INJECT_BEGIN VOLUMETRIC_FOG 0
     #if !defined(_SSR_ENABLED)
-      //  color = MixFogSurf(color, -fragData.viewDir, UNPACK_FOG(i), _Surface);
+        // color = MixFogSurf(color, -fragData.viewDir, UNPACK_FOG(i), _Surface);
         
-        color = VolumetricsSurf(color, meshData.position, _Surface);
+        color = VolumetricsSurf(color, meshData.positionWS, _Surface);
     #endif
 //#!INJECT_END

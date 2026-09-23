@@ -9,8 +9,20 @@
 
 #if defined(SHADER_API_MOBILE)
 #else
+    #pragma multi_compile_instancing
+    #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 #endif
 
+
+#if defined(SHADER_API_MOBILE)
+    #define R_DOTS_INSTANCING 0
+#else
+    #define R_DOTS_INSTANCING 1
+#endif
+
+#if R_DOTS_INSTANCING
+    #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
+#endif
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Texture.hlsl"

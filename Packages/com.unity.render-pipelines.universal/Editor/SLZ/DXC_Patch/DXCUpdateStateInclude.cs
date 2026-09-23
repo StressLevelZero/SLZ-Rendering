@@ -7,7 +7,7 @@ using SLZ.DXCUpdater;
 
 namespace SLZ.SLZEditorTools
 {
-    [ScriptedImporter(0, new string[] { "dxcguard" }, null, -3000, AllowCaching = false)]
+    [ScriptedImporter(1, new string[] { "dxcguard" }, null, -3000, AllowCaching = false)]
     public class DXCUpdateStateInclude : ScriptedImporter
     {
         public override void OnImportAsset(AssetImportContext ctx)
