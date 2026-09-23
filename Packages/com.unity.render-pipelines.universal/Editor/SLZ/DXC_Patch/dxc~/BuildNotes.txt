@@ -1,10 +1,10 @@
-DirectX Shader compiler release-1.8.2407 (8b0a41ba3612c15e8b7d5c84ba14a1cedd74badc)
-Built off of release-1.8.2407 commit 416fab6b5 (https://github.com/microsoft/DirectXShaderCompiler/commit/416fab6b5c4ba956a320d9131102304da995edfc).
-This DXC was modified to force certain compile arguments. The shader model is always promoted to at least 6.5 since unity gatekeeps everything past 6.0 to couple of features it officially supports. The target vulkan version is also forced to 1.2 since unity only asks for 1.0.
-The SPIRV-Tools dependency was modified to undo some optimizations introduced since the DXC version Unity is currently using. These removed unused inputs from the shader, changing the interface in a way unity does not account for resulting in misalignment of the vertex data. Additionally, SPV_KHR_fragment_shading_rate was added to the whitelist for the aggressive dead code optimization pass to stop it from failing if that extension was enabled. Changes made are in the SPIRV-Tools-unityfix.patch patch file.
+DirectX Shader compiler release-1.10.2606 (5926b573c32eb83922e2055b867da326ffa51007)
+Built off of main commit 5926b57 (https://github.com/microsoft/DirectXShaderCompiler/commit/5926b573c32eb83922e2055b867da326ffa51007).
+This DXC was modified to force certain compile arguments. The shader model is always promoted to at least 6.5 since unity gatekeeps everything past 6.0 to couple of features it officially supports. The target vulkan version is also forced to 1.2 since unity only used to ask for 1.0 pre-6.7 (this needs to be checked).
+Previous versions modified the SPIRV-Tools dependency to undo some optimizations that caused unity to miscalculate binding addresses. This is no longer necessary
 
 
-If rebuilding this from source, apply DXC-unityfix.patch to the repo root and SPIRV-Tools-unityfix.patch to the SPIRV-Tools folder (from git terminal or bash: patch -p1 < DXC-unityfix.patch).If using visual studio, select the x64-clang-cl-Release config, disable the LLVM_ENABLE_WARNINGS and SPIRV_WERRROR cmake variables, and add this to the command line arguments:
+If rebuilding this from source, apply the included patch files to the repo root. If using visual studio, select the x64-clang-cl-Release config, disable the LLVM_ENABLE_WARNINGS and SPIRV_WERRROR cmake variables, and add this to the command line arguments:
 -DCMAKE_CXX_FLAGS="/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR=1 -Wno-unsafe-buffer-usage -Wno-c++98-compat" 
 
 Changes in VS 2022 17.10 to make mutex constructors constexpr causes a crash in this dll on our build machines. Force old behavior with _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR  (https://github.com/microsoft/STL/wiki/Changelog#vs-2022-1710)
@@ -32,3 +32,5 @@ Note that I set DLLVM_ENABLE_ASSERTIONS=Off here. It was previously set to On in
 
 2026-03-20
 Update to force HLSL 2021. Since unity 6 updated to 1.7.2308, it started specifying hlsl 2018 in the arguments passed to DXC. Modified the compiler to change hlsl arguments less than 2021 to 2021.
+
+2026-09-09 Rebased on 1.10.2606 to catch up with version 1.10.0 used by unity 6.7. Patches no longer necessary other than forcing HLSL 2021 and shader model 6.5

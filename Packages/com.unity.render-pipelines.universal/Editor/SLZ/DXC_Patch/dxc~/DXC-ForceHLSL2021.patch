@@ -1,7 +1,7 @@
-diff --git a/CMakeSettings.json b/CMakeSettings.json
+diff --git CMakeSettings.json CMakeSettings.json
 index 56614f8f6..36af24c97 100644
---- a/CMakeSettings.json
-+++ b/CMakeSettings.json
+--- CMakeSettings.json
++++ CMakeSettings.json
 @@ -3,13 +3,25 @@
      {
        "name": "x64-Release",
@@ -114,18 +114,11 @@ index 56614f8f6..36af24c97 100644
 -}
 +}
 \ No newline at end of file
-diff --git a/external/SPIRV-Tools b/external/SPIRV-Tools
-index 0cfe9e721..1dc261887 160000
---- a/external/SPIRV-Tools
-+++ b/external/SPIRV-Tools
-@@ -1 +1 @@
--Subproject commit 0cfe9e7219148716dfd30b37f4d21753f098707a
-+Subproject commit 1dc2618879f65511d5d9e501f2dd0b6cc6335d17
-diff --git a/lib/DxcSupport/HLSLOptions.cpp b/lib/DxcSupport/HLSLOptions.cpp
-index 94103077f..dd97f823c 100644
---- a/lib/DxcSupport/HLSLOptions.cpp
-+++ b/lib/DxcSupport/HLSLOptions.cpp
-@@ -354,10 +354,10 @@ namespace hlsl {
+diff --git lib/DxcSupport/HLSLOptions.cpp lib/DxcSupport/HLSLOptions.cpp
+index 1630243aa..18960d3e4 100644
+--- lib/DxcSupport/HLSLOptions.cpp
++++ lib/DxcSupport/HLSLOptions.cpp
+@@ -391,10 +391,10 @@ namespace hlsl {
  
  LangStd parseHLSLVersion(llvm::StringRef Ver) {
    return llvm::StringSwitch<hlsl::LangStd>(Ver)
@@ -140,7 +133,7 @@ index 94103077f..dd97f823c 100644
        .Case("2021", hlsl::LangStd::v2021)
        .Case("202x", hlsl::LangStd::v202x)
        .Default(hlsl::LangStd::vError);
-@@ -471,6 +471,14 @@ int ReadDxcOpts(const OptTable *optionTable, unsigned flagsToInclude,
+@@ -562,6 +562,14 @@ int ReadDxcOpts(const OptTable *optionTable, unsigned flagsToInclude,
      opts.TargetProfile = Args.getLastArgValue(OPT_target_profile);
    }
  
@@ -155,7 +148,7 @@ index 94103077f..dd97f823c 100644
    if (opts.IsLibraryProfile()) {
      // Don't bother erroring out when entry is specified.  We weren't always
      // doing this before, so doing so will break existing code.
-@@ -1176,8 +1184,8 @@ int ReadDxcOpts(const OptTable *optionTable, unsigned flagsToInclude,
+@@ -1244,8 +1252,8 @@ int ReadDxcOpts(const OptTable *optionTable, unsigned flagsToInclude,
      opts.SpirvOptions.debugInfoLine = opts.SpirvOptions.debugInfoTool = true;
    }
  
@@ -166,23 +159,11 @@ index 94103077f..dd97f823c 100644
  
    llvm::APInt maxId;
  
-diff --git a/solution_build.bat b/solution_build.bat
-new file mode 100644
-index 000000000..7b8fbeb57
---- /dev/null
-+++ b/solution_build.bat
-@@ -0,0 +1,5 @@
-+CALL "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
-+SET projectDir=%cd%
-+SET BUILD_TYPE=RelWithDebInfo
-+SET BUILD_DIR=out7
-+CALL "C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -G "Visual Studio 17 2022" -T ClangCl -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -C %projectDir%\cmake\caches\PredefinedParams.cmake -DCLANG_CL=True -DSPIRV_WERROR=False -DLLVM_ENABLE_WARNINGS=False -DSPIRV_BUILD_TESTS=False -DLLVM_ENABLE_ASSERTIONS=Off -DLLVM_ENABLE_WERROR=False -DLLVM_LIT_ARGS="-v" -DCMAKE_CXX_FLAGS="/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR=1 /D NDEBUG=1 -Wno-error -Wno-unsafe-buffer-usage -Wno-c++98-compat -Wno-switch -Wno-unused-variable -Wno-cast-function-type-mismatch"
-\ No newline at end of file
-diff --git a/tools/clang/tools/dxcompiler/DXCompiler.cpp b/tools/clang/tools/dxcompiler/DXCompiler.cpp
-index c54844144..21081bd52 100644
---- a/tools/clang/tools/dxcompiler/DXCompiler.cpp
-+++ b/tools/clang/tools/dxcompiler/DXCompiler.cpp
-@@ -53,6 +53,9 @@ void __CRTDECL operator delete(void *ptr,
+diff --git tools/clang/tools/dxcompiler/DXCompiler.cpp tools/clang/tools/dxcompiler/DXCompiler.cpp
+index c7ffcbffa..2e891f445 100644
+--- tools/clang/tools/dxcompiler/DXCompiler.cpp
++++ tools/clang/tools/dxcompiler/DXCompiler.cpp
+@@ -52,6 +52,9 @@ void __CRTDECL operator delete(void *ptr,
  #endif
  
  static HRESULT InitMaybeFail() throw() {
@@ -192,10 +173,10 @@ index c54844144..21081bd52 100644
    HRESULT hr;
    bool fsSetup = false, memSetup = false;
    IFC(DxcInitThreadMalloc());
-diff --git a/tools/clang/tools/dxcompiler/dxcompilerobj.cpp b/tools/clang/tools/dxcompiler/dxcompilerobj.cpp
-index 0ee0d0076..e9e868bf8 100644
---- a/tools/clang/tools/dxcompiler/dxcompilerobj.cpp
-+++ b/tools/clang/tools/dxcompiler/dxcompilerobj.cpp
+diff --git tools/clang/tools/dxcompiler/dxcompilerobj.cpp tools/clang/tools/dxcompiler/dxcompilerobj.cpp
+index e39381e8d..d3cac6c06 100644
+--- tools/clang/tools/dxcompiler/dxcompilerobj.cpp
++++ tools/clang/tools/dxcompiler/dxcompilerobj.cpp
 @@ -52,6 +52,7 @@
  
  #ifdef _WIN32
@@ -204,7 +185,7 @@ index 0ee0d0076..e9e868bf8 100644
  #endif
  #include "dxcompileradapter.h"
  #include "dxcshadersourceinfo.h"
-@@ -547,6 +548,13 @@ public:
+@@ -540,6 +541,13 @@ public:
      bool bPreprocessStarted = false;
      DxilShaderHash ShaderHashContent;
      DxcThreadMalloc TM(m_pMalloc);
@@ -218,3 +199,18 @@ index 0ee0d0076..e9e868bf8 100644
  
      try {
        DefaultFPEnvScope fpEnvScope;
+diff --git utils/version/latest-release.json utils/version/latest-release.json
+index 58562f6ed..9edec4539 100644
+--- utils/version/latest-release.json
++++ utils/version/latest-release.json
+@@ -1,8 +1,8 @@
+ {
+   "version": {
+     "major": "1",
+-    "minor": "9",
+-    "rev": "2607"
++    "minor": "10",
++    "rev": "2606"
+   },
+   "sha": "dc3e6c48d451e15d8a730574ca693e4095c628b8"
+ }
