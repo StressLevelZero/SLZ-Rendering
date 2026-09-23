@@ -35,7 +35,7 @@ namespace SLZ
 
     struct LightMeshData
     {
-        float3 position;        // worldspace position of the fragment
+        float3 positionWS;        // worldspace position of the fragment
         half3  normal;          // worldspace normal
         half3  meshNormal;      // raw mesh normal unmodified by normal maps, used for horizon occlusion and SSR
         half3  viewDir;         // normalized camera to fragment vector
@@ -64,6 +64,13 @@ namespace SLZ
         half3 emission;
         half  occlusion;
 
+        // Hacking this in the base struct since it's best if fluorescence is handled as a special case in the PBR template
+        // We could make a fluorescent diffuse model class, but then we'd have to calculate fluorescence
+        // on every light source instead of at the end using the total diffuse radiance.
+        #ifdef SLZ_FLUORESCENCE
+        half3 fluorColor;
+        half4 fluorAbsorbance;
+        #endif
 
         // Surface type 
         min16uint  surfaceType;
@@ -509,7 +516,31 @@ namespace SLZ
         return half4(lmDirection, strength);
     }
 
+    /**
+     * Calculates fluorescent light conversion. Not energy conserving, but does reduce the original outgoing radiance by the absorbance.
+     *
+     * @param[in,out] diffuseLight  Outgoing diffuse radiance unmodified by fluorescence. Outputs diffuse light minus the fraction adsorbed by fluorescence
+     * @param         absorbance    R G B UV vector representing the fraction of light absorbed from each wavelength and re-emitted as fluorescence
+     * @param         emissionColor Color of the re-emitted light 
+     *
+     * @returns Radiance from fluorescence and diffuse light reduced by the fluorescent absorption.
+     */
+    half3 Fluorescence(inout half4 diffuseLight, half4 absorbance, half3 emissionColor ){
+       
+        half4 absorbedLight = diffuseLight * absorbance;
 
+        // Reduce diffuse light by the amount adsorbed by the fluorescence process. 
+        half4 fluorescentEfficiency = absorbance * max(emissionColor.r, max(emissionColor.g, emissionColor.b));
+        diffuseLight = diffuseLight * (1.0f - fluorescentEfficiency);
+
+        //Combine each color from high to low frequency to account for dual-excitation
+        half absorbedB = absorbedLight.b + absorbedLight.a;
+        half absorbedG = absorbedB + absorbedLight.g;
+        half absorbedR = absorbedG + absorbedLight.r;
+
+        half3 reemittedLight = half3(absorbedR, absorbedG, absorbedB) * emissionColor.rgb ;
+        return reemittedLight;					
+    }
 
 //----------------------------------------------------------------------------
 // FUNCTION POINTERS ---------------------------------------------------------
@@ -523,9 +554,10 @@ namespace SLZ
         uint disambiguationLambert;
         #endif
 
-        static half4 PunctualDiffuse(LightMeshData md, LightPhysData ps, half3 lightDir, half4 lightIntensity)
+        static LIGHT_VEC PunctualDiffuse(LightMeshData md, LightPhysData ps, Light light)
         {
-            return half4(saturate(dot(lightDir, md.normal)) * lightIntensity);
+            half attenuation = light.distanceAttenuation * light.shadowAttenuation;
+            return (saturate(dot(light.direction, md.normal)) * attenuation) * light.color;
         }
 
         static half3 ShDiffuse(LightMeshData md, LightPhysData ps, ShCoefficients sh)
@@ -591,7 +623,7 @@ namespace SLZ
         static half3 IblSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir, half2 fgd)
         {
             return 
-                ProbeIblSpecularMultiscatterFGD(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd) 
+                ProbeIblSpecularMultiscatterFGD(reflectionDir, md.positionWS, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd) 
                 //ProbeIblSpecularNonPhys(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0())
                     * SpecularHorizonOcclusion(md.normal, md.meshNormal, reflectionDir)
                     ;
@@ -649,7 +681,7 @@ namespace SLZ
         
         static half3 IblSpecular(LightMeshData md, LightPhysData ps, half3 reflectionDir, half2 fgd)
         {
-            return ProbeIblSpecularMultiscatterFGD(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd)
+            return ProbeIblSpecularMultiscatterFGD(reflectionDir, md.positionWS, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd)
                     * SpecularHorizonOcclusion(md.normal, md.meshNormal, reflectionDir)
                     ;
         }
@@ -708,7 +740,7 @@ namespace SLZ
 
         static half3 IblSpecular(LightMeshDataAniso md, LightPhysDataAniso ps, half3 reflectionDir, half2 fgd)
         {
-            return ProbeIblSpecularMultiscatterFGD(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd)
+            return ProbeIblSpecularMultiscatterFGD(reflectionDir, md.positionWS, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0(), fgd)
                     * SpecularHorizonOcclusion(md.normal, md.meshNormal, reflectionDir)
                     ;
         }

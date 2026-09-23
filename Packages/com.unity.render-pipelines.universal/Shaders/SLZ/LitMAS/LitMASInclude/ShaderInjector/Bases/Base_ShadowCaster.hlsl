@@ -3,6 +3,8 @@
 #if defined(SHADER_API_MOBILE)
     //#!INJECT_POINT MOBILE_DEFINES
 #else
+    #pragma multi_compile_instancing
+    #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
     //#!INJECT_POINT STANDALONE_DEFINES
 #endif
 
@@ -39,8 +41,8 @@ float4 GetShadowPositionHClip(Attributes input)
 	float2 vShadowOffsets = GetShadowOffsets(normalWS, lightDirectionWS);
     //positionWS.xyz -= vShadowOffsets.x * normalWS.xyz * .01;
 	positionWS.xyz -= vShadowOffsets.y * lightDirectionWS.xyz * .01;
-	float4 positionCS = TransformObjectToHClip(mul(unity_WorldToObject, float4(positionWS.xyz, 1.0)).xyz);
-    //float4 positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, lightDirectionWS));
+	//float4 positionCS = TransformObjectToHClip(mul(unity_WorldToObject, float4(positionWS.xyz, 1.0)).xyz);
+    float4 positionCS = TransformWorldToHClip(ApplySLZShadowBias(positionWS, normalWS, lightDirectionWS));
 
 #if UNITY_REVERSED_Z
     positionCS.z = min(positionCS.z, UNITY_NEAR_CLIP_VALUE);

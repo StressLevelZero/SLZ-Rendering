@@ -249,6 +249,9 @@
 #endif
 
 #if R_LIGHTMAP_VARIANTS
+    // URP GPU resident drawer as of 2026-09-11 does not ever use lightmap texture arrays
+    #define USE_LEGACY_LIGHTMAPS 1
+
     #pragma multi_compile _ LIGHTMAP_ON
     #pragma multi_compile _ DIRLIGHTMAP_COMBINED
     #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
@@ -256,8 +259,7 @@
     #if R_DYNAMIC_LIGHTMAPS
         #pragma multi_compile _ DYNAMICLIGHTMAP_ON
     #endif
-
-    //#pragma multi_compile _ USE_LEGACY_LIGHTMAPS
+    
     #if R_LIGHTMAP_BICUBIC == 1
         #pragma multi_compile_fragment _ LIGHTMAP_BICUBIC_SAMPLING
     #elif R_LIGHTMAP_BICUBIC == 2

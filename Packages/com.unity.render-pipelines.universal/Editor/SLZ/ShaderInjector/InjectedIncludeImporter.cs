@@ -12,9 +12,10 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace SLZ.SLZEditorTools
 {
-    [ScriptedImporter(4, new string[] { "injinc" }, null, -3000, AllowCaching = true)]
+    [ScriptedImporter(5, new string[] { "injinc" }, null, -3000, AllowCaching = true)]
     public class InjectedIncludeImporter : ScriptedImporter
     {
+        internal static List<string> s_reimportPaths;
         public override void OnImportAsset(AssetImportContext ctx)
         {
             string outputPath = "null";
@@ -31,7 +32,9 @@ namespace SLZ.SLZEditorTools
                 {
                     outputPath = AssetDatabase.GetAssetPath(injInc.outputInclude.entityId);
                     injInc.UpdateInjection();
-                    AssetDatabase.ImportAsset(outputPath, ImportAssetOptions.Default);
+                    s_reimportPaths ??= new List<string>();
+                    s_reimportPaths.Add(outputPath);
+                    //AssetDatabase.ImportAsset(outputPath, ImportAssetOptions.ForceSynchronousImport);
                 }
                 if (string.IsNullOrEmpty(outputPath)) outputPath = "null";
             }
@@ -43,6 +46,29 @@ namespace SLZ.SLZEditorTools
             Texture2D Icon = EditorGUIUtility.IconContent("ShaderVariantCollection Icon").image as Texture2D;
             ctx.AddObjectToAsset("path", dummy, Icon);
             ctx.SetMainObject(dummy);
+        }
+    }
+
+    public class InjectedIncludeImportPass2 : AssetPostprocessor
+    {
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths, bool didDomainReload)
+        {
+            if (InjectedIncludeImporter.s_reimportPaths != null && InjectedIncludeImporter.s_reimportPaths.Count > 0)
+            {
+                try
+                {
+                    AssetDatabase.StartAssetEditing();
+                    foreach (string path in InjectedIncludeImporter.s_reimportPaths)
+                    {
+                        AssetDatabase.ImportAsset(path, ImportAssetOptions.DontDownloadFromCacheServer);
+                    }
+                }
+                finally
+                {
+                    InjectedIncludeImporter.s_reimportPaths.Clear();
+                    AssetDatabase.StopAssetEditing();
+                }
+            }
         }
     }
 
