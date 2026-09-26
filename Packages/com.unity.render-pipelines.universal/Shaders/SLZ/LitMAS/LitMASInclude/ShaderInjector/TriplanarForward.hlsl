@@ -52,7 +52,7 @@
 
 #define UNITY_UNIFIED_SHADER_PRECISION_MODEL
 
-
+#define PACK_COLOR_UNORM4X8 1
 // Begin Injection UNIVERSAL_DEFINES from Injection_Triplanar.hlsl ----------------------------------------------------------
 	#pragma multi_compile_local_fragment _ _EXPENSIVE_TP
 

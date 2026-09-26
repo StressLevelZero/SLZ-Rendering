@@ -173,7 +173,7 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
 
     half4 output = (half4)0;
 #if defined(SLZ_FLUORESCENCE)
-    output.rgb += Fluorescence(diffuse, physData.fluorAbsorbance, physData.fluorColor); 
+    output.rgb += Fluorescence(diffuse, physData.GetFluorescentAbsorbance(), physData.GetFluorescentColor()); 
 #endif
     output += half4(diffuse.rgb * physData.AlbedoAlpha().rgb + specular, 1);
     output.rgb += physData.emission;

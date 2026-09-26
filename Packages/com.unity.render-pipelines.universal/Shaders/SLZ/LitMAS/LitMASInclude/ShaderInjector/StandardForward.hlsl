@@ -52,7 +52,7 @@
 
 #define UNITY_UNIFIED_SHADER_PRECISION_MODEL
 
-
+#define PACK_COLOR_UNORM4X8 1
 // Begin Injection UNIVERSAL_DEFINES from Injection_DetailMap.hlsl ----------------------------------------------------------
 #pragma shader_feature_local_fragment _ _DETAILS_ON
 
@@ -73,6 +73,7 @@
 #pragma shader_feature_local_fragment _FLUORESCENCE
 #if defined(_FLUORESCENCE)
 #define SLZ_FLUORESCENCE 1
+#define PACK_FLUOR_UNORM4X8 1
 #define SLZ_LIGHT_ALPHA_AS_UV 1
 #endif
 // End Injection UNIVERSAL_DEFINES from Injection_Fluorescence.hlsl ----------------------------------------------------------
@@ -429,8 +430,8 @@ FragOut frag(VertOut i
 
 // Begin Injection PRE_LIGHTING_CALC from Injection_Fluorescence.hlsl ----------------------------------------------------------
 #if defined(_FLUORESCENCE)
-	physData.fluorColor = fluorescence;
-	physData.fluorAbsorbance = _FluorAbsorbance;
+	physData.SetFluorescentColor(fluorescence);
+	physData.SetFluorescentAbsorbance(_FluorAbsorbance);
 #endif
 // End Injection PRE_LIGHTING_CALC from Injection_Fluorescence.hlsl ----------------------------------------------------------
 
