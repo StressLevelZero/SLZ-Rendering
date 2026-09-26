@@ -54,7 +54,7 @@ namespace SLZ
             LIGHT_VEC lambertDiffuse = DiffuseModelLambert::PunctualDiffuse(md, ps, light);
             half retroReflLobe = RetroreflectionLobe(md.normal, md.viewDir, light.direction, ps.retroReflSharpness);
             retroReflLobe = min(half(100.0), retroReflLobe); // prevent +inf when viewDir == -light.direction
-            LIGHT_VEC retroReflLight = saturate(md.NoV) * retroReflLobe * light.distanceAttenuation * light.shadowAttenuation * light.color;
+            LIGHT_VEC retroReflLight = saturate(md.NoV * md.NoV) * retroReflLobe * light.distanceAttenuation * light.shadowAttenuation * light.color;
             return (ps.retroReflPercent * retroReflLight) + ((half(1.0) - ps.retroReflPercent) * lambertDiffuse);
         }
 
@@ -68,7 +68,7 @@ namespace SLZ
                 dot(fakeLightDirection, sh.L1L0b.xyz)); 
 
             half retroReflLobe = RetroreflectionLobe(md.normal, md.viewDir, fakeLightDirection, ps.retroReflSharpness);
-            half3 retroReflLight = ps.retroReflPercent * saturate(md.NoV) * retroReflLobe * retroreflectionEnergy;
+            half3 retroReflLight = ps.retroReflPercent * saturate(md.NoV * md.NoV) * retroReflLobe * retroreflectionEnergy;
 
             half3 lambertDiffuse = DiffuseModelLambert::ShDiffuse(md, ps, sh);
             lambertDiffuse *= half(1.0) - ps.retroReflPercent;
@@ -78,7 +78,6 @@ namespace SLZ
 
         static half3 LightmapDiffuse(LightMeshData md, LightPhysDataRetroRefl ps, half3 lightmapTexel, half4 dirLmTexel)
         {
-            
             return DiffuseModelLambert::LightmapDiffuse(md, ps, lightmapTexel, dirLmTexel);
         }
     };
@@ -108,16 +107,16 @@ namespace SLZ
         // Hijack IBL specular reflections for retroreflections so we don't sample the IBL lighting twice
         static half3 IblSpecular(LightMeshData md, LightPhysDataRetroRefl ps, half3 reflectionDir, half2 fgd)
         {
-            half lerpFactor = smoothstep(0.1, 0.3, ps.retroReflPercent);
-            half roughness = lerp(ps.Roughness(), (1.0 - ps.retroReflSharpness), lerpFactor);
-            half3 specularF0 = lerp(ps.SpecularF0(), ps.AlbedoAlpha().rgb, lerpFactor);
+            half lerpFactor = smoothstep(half(0.1), half(0.3), ps.retroReflPercent);
+            half roughness = lerp(ps.Roughness(), (half(1.0) - ps.retroReflSharpness), lerpFactor);
+            half3 specularF0 = lerp(ps.SpecularF0(), md.NoV * md.NoV * ps.AlbedoAlpha().rgb, lerpFactor);
             fgd = lerp(fgd, half2(0,1), lerpFactor);
-            reflectionDir = lerp(reflectionDir, md.viewDir, lerpFactor);
+            // Lerp has artifacting on the x/y/z planes, but doing the (presumably) same math doesn't?
+            reflectionDir = reflectionDir * (half(1.0) - lerpFactor) + md.viewDir * lerpFactor;
             return 
                 ProbeIblSpecularMultiscatterFGD(reflectionDir, md.positionWS, roughness, md.screenUV, md.NoV, specularF0, fgd) 
-                //ProbeIblSpecularNonPhys(reflectionDir, md.position, ps.Roughness(), md.screenUV, md.NoV, ps.SpecularF0())
-                    * SpecularHorizonOcclusion(md.normal, md.meshNormal, reflectionDir)
-                    ;
+                * SpecularHorizonOcclusion(md.normal, md.meshNormal, reflectionDir)
+                ;
         }
 
         static half3 ShFakeSpecular(LightMeshData md, LightPhysData ps, ShCoefficients sh, half3 shDiffuse, half2 fgd)
