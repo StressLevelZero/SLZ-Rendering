@@ -52,7 +52,7 @@
 
 #define UNITY_UNIFIED_SHADER_PRECISION_MODEL
 
-
+#define PACK_COLOR_UNORM4X8 1
 // Begin Injection UNIVERSAL_DEFINES from Injection_DetailMap.hlsl ----------------------------------------------------------
 #pragma shader_feature_local_fragment _ _DETAILS_ON
 
@@ -70,6 +70,7 @@
 #pragma shader_feature_local_fragment _FLUORESCENCE
 #if defined(_FLUORESCENCE)
 #define SLZ_FLUORESCENCE 1
+#define PACK_FLUOR_UNORM4X8 1
 #define SLZ_LIGHT_ALPHA_AS_UV 1
 #endif
 // End Injection UNIVERSAL_DEFINES from Injection_Fluorescence.hlsl ----------------------------------------------------------
@@ -125,6 +126,11 @@
 //#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZLightingSSR.hlsl"
 #endif
 // End Injection INCLUDES from Injection_SSR.hlsl ----------------------------------------------------------
+// Begin Injection INCLUDES from Injection_SkinBRDF.hlsl ----------------------------------------------------------
+#if defined(_BRDFMAP)
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/LightingModelBrdfLut.hlsl"
+#endif
+// End Injection INCLUDES from Injection_SkinBRDF.hlsl ----------------------------------------------------------
 
 
 struct VertIn
@@ -205,6 +211,9 @@ TEXTURE2D(_EmissionMap);
 	TEXTURE2D(_FluorMap);
 #endif
 // End Injection UNIFORMS from Injection_Fluorescence.hlsl ----------------------------------------------------------
+// Begin Injection UNIFORMS from Injection_SkinBRDF.hlsl ----------------------------------------------------------
+TEXTURE2D(g_tBRDFMap);
+// End Injection UNIFORMS from Injection_SkinBRDF.hlsl ----------------------------------------------------------
 
 #if defined(CBUFFER_PATH)
 #include CBUFFER_PATH
@@ -448,8 +457,8 @@ FragOut frag(VertOut i
 
 // Begin Injection PRE_LIGHTING_CALC from Injection_Fluorescence.hlsl ----------------------------------------------------------
 #if defined(_FLUORESCENCE)
-	physData.fluorColor = fluorescence;
-	physData.fluorAbsorbance = _FluorAbsorbance;
+	physData.SetFluorescentColor(fluorescence);
+	physData.SetFluorescentAbsorbance(_FluorAbsorbance);
 #endif
 // End Injection PRE_LIGHTING_CALC from Injection_Fluorescence.hlsl ----------------------------------------------------------
 
@@ -476,6 +485,16 @@ FragOut frag(VertOut i
         color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, (SLZ::DiffuseModelLambert)0);
     #endif
 // End Injection LIGHTING_CALC from Injection_SSR.hlsl ----------------------------------------------------------
+// Begin Injection LIGHTING_CALC from Injection_SkinBRDF.hlsl ----------------------------------------------------------
+#if defined(_BRDFMAP)
+    SLZ::DiffuseModelSkinBrdfLut diffuseModel;
+    diffuseModel.BRDFLut = g_tBRDFMap;
+    diffuseModel.SubSurfScatterIntensity = _SSSColor;
+	color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, diffuseModel);
+#else
+    color = SLZ::PhysicallyBasedLighting(meshData, physData, (SLZ::SpecularModelKSK)0, (SLZ::DiffuseModelLambert)0);
+#endif
+// End Injection LIGHTING_CALC from Injection_SkinBRDF.hlsl ----------------------------------------------------------
 
 
 // Begin Injection VOLUMETRIC_FOG from Injection_SSR.hlsl ----------------------------------------------------------

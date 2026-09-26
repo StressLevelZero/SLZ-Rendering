@@ -27,7 +27,7 @@
 
 #define UNITY_UNIFIED_SHADER_PRECISION_MODEL
 
-
+#define PACK_COLOR_UNORM4X8 1
 // Begin Injection UNIVERSAL_DEFINES from Injection_Anisotropic.hlsl ----------------------------------------------------------
 #define _SLZ_ANISO_SPECULAR
 // End Injection UNIVERSAL_DEFINES from Injection_Anisotropic.hlsl ----------------------------------------------------------

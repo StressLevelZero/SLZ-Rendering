@@ -23,7 +23,6 @@ cbuffer UnityPerMaterial
     half4 _BaseColor;
 // Begin Injection MATERIAL_CBUFFER_HALF_VECTORS from Injection_Impacts_CBuffer.hlsl ----------------------------------------------------------
 	half4 _HitColor;
-	half4 _SSSColor;
 // End Injection MATERIAL_CBUFFER_HALF_VECTORS from Injection_Impacts_CBuffer.hlsl ----------------------------------------------------------
 // Begin Injection MATERIAL_CBUFFER_HALF_VECTORS from Injection_Emission_CBuffer.hlsl ----------------------------------------------------------
 	half4 _EmissionColor;
@@ -32,6 +31,9 @@ cbuffer UnityPerMaterial
     half4 _FluorColor;
     half4 _FluorAbsorbance;
 // End Injection MATERIAL_CBUFFER_HALF_VECTORS from Injection_Fluorescence_CBuffer.hlsl ----------------------------------------------------------
+// Begin Injection MATERIAL_CBUFFER_HALF_VECTORS from Injection_SkinBRDF.hlsl ----------------------------------------------------------
+half4  _SSSColor;
+// End Injection MATERIAL_CBUFFER_HALF_VECTORS from Injection_SkinBRDF.hlsl ----------------------------------------------------------
 // Begin Injection MATERIAL_CBUFFER_FLOAT_SCALARS from Injection_Impacts_CBuffer.hlsl ----------------------------------------------------------
 	int _NumberOfHits;
 // End Injection MATERIAL_CBUFFER_FLOAT_SCALARS from Injection_Impacts_CBuffer.hlsl ----------------------------------------------------------

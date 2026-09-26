@@ -2,6 +2,7 @@
 #pragma shader_feature_local_fragment _FLUORESCENCE
 #if defined(_FLUORESCENCE)
 #define SLZ_FLUORESCENCE 1
+#define PACK_FLUOR_UNORM4X8 1
 #define SLZ_LIGHT_ALPHA_AS_UV 1
 #endif
 //#!INJECT_END
@@ -28,7 +29,7 @@
 
 //#!INJECT_BEGIN PRE_LIGHTING_CALC 0
 #if defined(_FLUORESCENCE)
-	physData.fluorColor = fluorescence;
-	physData.fluorAbsorbance = _FluorAbsorbance;
+	physData.SetFluorescentColor(fluorescence);
+	physData.SetFluorescentAbsorbance(_FluorAbsorbance);
 #endif
 //#!INJECT_END

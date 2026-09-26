@@ -68,8 +68,47 @@ namespace SLZ
         // We could make a fluorescent diffuse model class, but then we'd have to calculate fluorescence
         // on every light source instead of at the end using the total diffuse radiance.
         #ifdef SLZ_FLUORESCENCE
-        half3 fluorColor;
-        half4 fluorAbsorbance;
+            #ifdef PACK_FLUOR_UNORM4X8
+                uint m_fluorColor;
+                uint m_fluorAbsorbance;
+            #else
+                half3 m_fluorColor;
+                half4 m_fluorAbsorbance;
+            #endif
+            void SetFluorescentColor(half3 color)
+            {
+                #ifdef PACK_FLUOR_UNORM4X8
+                    m_fluorColor = VkSPIRV::PackUNorm4x8(half4(color, 0));
+                #else
+                    m_fluorColor = color;
+                #endif
+            }
+            void SetFluorescentAbsorbance(half4 absorbance)
+            {
+                #ifdef PACK_FLUOR_UNORM4X8
+                    m_fluorAbsorbance = VkSPIRV::PackUNorm4x8(absorbance);
+                #else
+                    m_fluorAbsorbance = absorbance;
+                #endif
+            }
+
+            half3 GetFluorescentColor()
+            {
+                #ifdef PACK_FLUOR_UNORM4X8
+                    return VkSPIRV::UnpackUNorm4x8(m_fluorColor).rgb;
+                #else
+                    return m_fluorColor;
+                #endif
+            }
+
+            half4 GetFluorescentAbsorbance()
+            {
+                #ifdef PACK_FLUOR_UNORM4X8
+                    return VkSPIRV::UnpackUNorm4x8(m_fluorAbsorbance);
+                #else
+                    return m_fluorAbsorbance;
+                #endif
+            }
         #endif
 
         // Surface type 
