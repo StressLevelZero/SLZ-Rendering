@@ -16,7 +16,7 @@ namespace UnityEngine.Rendering.Universal
     /// <seealso cref="Shader"/>
     /// <seealso cref="Texture"/>
     [Serializable]
-    [URPHelpURL("integration-with-post-processing")]
+    [URPHelpURL("urp/integration-with-post-processing")]
     public class PostProcessData : ScriptableObject
     {
 #if UNITY_EDITOR
@@ -179,6 +179,12 @@ namespace UnityEngine.Rendering.Universal
             /// </summary>
             [ResourcePath("Shaders/PostProcessing/FinalPost.shader")]
             public Shader finalPostPassPS;
+
+            /// <summary>
+            /// The Upscaler Reactive Mask shader.
+            /// </summary>
+            [ResourcePath("Shaders/PostProcessing/UpscalerReactiveMask.shader")]
+            public Shader reactiveMaskPS;
 
 #if UNITY_EDITOR
             /// <summary>

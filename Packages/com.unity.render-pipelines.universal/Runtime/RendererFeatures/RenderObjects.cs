@@ -25,7 +25,7 @@ namespace UnityEngine.Rendering.Universal
     [ExcludeFromPreset]
     [MovedFrom(true, "UnityEngine.Experimental.Rendering.Universal")]
     [Tooltip("Render Objects simplifies the injection of additional render passes by exposing a selection of commonly used settings.")]
-    [URPHelpURL("renderer-features/renderer-feature-render-objects")]
+    [URPHelpURL("urp/renderer-features/renderer-feature-render-objects")]
     public class RenderObjects : ScriptableRendererFeature
     {
         /// <summary>
@@ -234,7 +234,8 @@ namespace UnityEngine.Rendering.Universal
             if (settings.stencilSettings.overrideStencilState)
                 renderObjectsPass.SetStencilState(settings.stencilSettings.stencilReference,
                     settings.stencilSettings.stencilCompareFunction, settings.stencilSettings.passOperation,
-                    settings.stencilSettings.failOperation, settings.stencilSettings.zFailOperation);
+                    settings.stencilSettings.failOperation, settings.stencilSettings.zFailOperation,
+                    settings.stencilSettings.stencilReadMask, settings.stencilSettings.stencilWriteMask);
         }
 
         /// <inheritdoc/>
@@ -242,6 +243,10 @@ namespace UnityEngine.Rendering.Universal
         {
             if (renderingData.cameraData.cameraType == CameraType.Preview
                 || UniversalRenderer.IsOffscreenDepthTexture(ref renderingData.cameraData))
+                return;
+
+            // An empty layer mask filters out all renderers, so the pass would never draw anything.
+            if (settings.filterSettings.LayerMask == 0)
                 return;
 
             bool enableDepthInputAttachment = settings.depthInputAttachment;

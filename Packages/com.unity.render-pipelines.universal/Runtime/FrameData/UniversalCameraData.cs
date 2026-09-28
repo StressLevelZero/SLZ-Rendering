@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -150,6 +151,14 @@ namespace UnityEngine.Rendering.Universal
         /// </summary>
         public int scaledHeight;
 
+#if ENABLE_UPSCALER_FRAMEWORK
+        // The hardware dynamic resolution (ScalableBufferManager) scale captured once per camera at setup, so upscaler
+        // passes read a stable per-camera value instead of the live, global, mid-frame-mutable SBM factors (which other
+        // passes could change between the camera color being aliased and the upscaler reading it). Vector2.one when the
+        // camera does not use hardware dynamic resolution.
+        internal Vector2 hardwareDynamicResolutionScale;
+#endif
+
         // NOTE: This is internal instead of private to allow ref return in the old CameraData compatibility property.
         // We can make this private when it is removed.
         //
@@ -179,6 +188,8 @@ namespace UnityEngine.Rendering.Universal
         /// Render texture settings used to create intermediate camera textures for rendering.
         /// </summary>
         public RenderTextureDescriptor cameraTargetDescriptor;
+        internal RenderTargetInfo backbufferColor;
+        internal RenderTargetInfo backbufferDepth;
         internal Rect pixelRect;
         internal bool useScreenCoordOverride;
         internal Vector4 screenSizeOverride;
@@ -407,7 +418,10 @@ namespace UnityEngine.Rendering.Universal
             bool isBackbuffer = handleID == BuiltinRenderTextureType.CameraTarget || handleID == BuiltinRenderTextureType.Depth;
 #if ENABLE_VR && ENABLE_XR_MODULE
             if (xr.enabled)
+            {
                 isBackbuffer |= handleID == new RenderTargetIdentifier(xr.renderTarget, 0, CubemapFace.Unknown, 0);
+                isBackbuffer |= handleID == new RenderTargetIdentifier(xr.motionVectorRenderTarget, 0, CubemapFace.Unknown, 0);
+            }
 #endif
             return !isBackbuffer;
         }
@@ -440,6 +454,21 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
+        /// Returns true when Meta Temporal Pixel Synthesis is the active resolver for this camera.
+        /// When true, the compositor performs the temporal resolve and any upscaling, so URP must suppress
+        /// its own TAA/STP resolve, its jitter, and its spatial upscalers.
+        /// </summary>
+        /// <returns>True if Temporal Pixel Synthesis is active</returns>
+        internal bool IsTemporalPixelSynthesisActive()
+        {
+#if ENABLE_VR && ENABLE_XR_MODULE
+            return xr.enabled && xr.isTemporalPixelSynthesisActive;
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>
         /// Returns true if the pipeline and the given camera are configured to render with temporal anti-aliasing post processing enabled
         ///
         /// Once selected, TAA necessitates some pre-requisites from the pipeline to run, mostly from the camera itself.
@@ -456,7 +485,8 @@ namespace UnityEngine.Rendering.Universal
                    && (cameraTargetDescriptor.msaaSamples == 1)                                                                       // No MSAA
                    && !(additionalCameraData?.renderType == CameraRenderType.Overlay || additionalCameraData?.cameraStack.Count > 0)  // No Camera stack
                    && !camera.allowDynamicResolution                                                                                  // No Dynamic Resolution
-                   && renderer.SupportsMotionVectors();                                                                               // Motion Vectors implemented
+                   && renderer.SupportsMotionVectors()                                                                                // Motion Vectors implemented
+                   && !IsTemporalPixelSynthesisActive();                                                                                      // XR compositor is the resolver (also disables jitter via CalculateJitterMatrix)
         }
 
         /// <summary>
@@ -634,6 +664,8 @@ namespace UnityEngine.Rendering.Universal
             renderType = CameraRenderType.Base;
             targetTexture = null;
             cameraTargetDescriptor = default;
+            backbufferColor = default;
+            backbufferDepth = default;
             pixelRect = default;
             useScreenCoordOverride = false;
             screenSizeOverride = default;
@@ -645,6 +677,7 @@ namespace UnityEngine.Rendering.Universal
             imageScalingMode = ImageScalingMode.None;
 #if ENABLE_UPSCALER_FRAMEWORK
             resolvedUpscalerHash = -1;
+            hardwareDynamicResolutionScale = Vector2.one;
 #else
             upscalingFilter = ImageUpscalingFilter.Point;
 #endif

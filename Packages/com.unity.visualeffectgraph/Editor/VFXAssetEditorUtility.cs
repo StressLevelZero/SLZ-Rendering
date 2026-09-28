@@ -125,7 +125,7 @@ VisualEffectResource:
             return AssetDatabase.LoadAssetAtPath<T>(path);
         }
 
-        [MenuItem("Assets/Create/Visual Effects/Visual Effect Graph", false, 306)]
+        [MenuItem("Assets/Create/Visual Effects/Visual Effect Graph...", false, 306)]
         public static void CreateVisualEffectAsset()
         {
             VFXLibrary.LogUnsupportedSRP();
@@ -156,7 +156,7 @@ VisualEffectResource:
         public static void CreateHLSLFileAsset()
         {
             var action = ScriptableObject.CreateInstance<DoCreateHLSLFile>();
-            var icon = EditorGUIUtility.FindTexture(typeof(TextAsset));
+            var icon = EditorGUIUtility.FindTexture(typeof(ShaderInclude));
             ProjectWindowUtil.StartNameEditingIfProjectWindowExists(EntityId.None, action, "New custom node.hlsl", icon, null);
         }
 

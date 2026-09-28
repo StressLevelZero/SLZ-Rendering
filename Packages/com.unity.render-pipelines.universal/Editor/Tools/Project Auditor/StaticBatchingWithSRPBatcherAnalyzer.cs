@@ -4,6 +4,7 @@ using Unity.ProjectAuditor.Editor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Pool;
 
 namespace UnityEditor.Rendering.Universal.ProjectAuditor
 {
@@ -21,7 +22,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor
         )
         {
             Fixer = FixStaticBatching,
-            DefaultSeverity = Severity.Warning,
             MessageFormat = "URP: Static Batching conflicts with SRP Batcher enabled in {0}.asset in {1}",
         };
 

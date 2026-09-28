@@ -26,7 +26,7 @@ namespace UnityEditor.Rendering
         , IHasCustomMenu
 #endif
     {
-        internal static GUIContent s_TitleContent = EditorGUIUtility.TrTextContent("Rendering Debugger");
+        internal static GUIContent s_TitleContent = L10n.TextContent("Rendering Debugger", null, null, null);
 
         [MenuItem("Window/Analysis/Rendering Debugger", priority = 10005)]
         static void Init()
@@ -46,8 +46,6 @@ namespace UnityEditor.Rendering
         {
 #if ENABLE_RENDERING_DEBUGGER_UI
             RecreateGUI();
-
-            UpdateWidgetStates();
 #else
             var helpBox = new HelpBox(
                 "UIElements Module is disabled. In order to use Rendering Debugger, enable the module in Package Manager > Built-in. ",
@@ -76,34 +74,23 @@ namespace UnityEditor.Rendering
         VisualElement m_LeftPaneElement;
         VisualElement m_RightPaneElement;
 
-        const string k_UssCommon = "Packages/com.unity.render-pipelines.core/Runtime/DEbugging/Runtime UI Resources/DebugWindowCommon.uss";
+        const string k_UssCommon = "Packages/com.unity.render-pipelines.core/Runtime/Debugging/Runtime UI Resources/DebugWindowCommon.uss";
         const string k_Uss = "Packages/com.unity.render-pipelines.core/Editor/Debugging/DebugWindow.uss";
         const string k_Uxml = "Packages/com.unity.render-pipelines.core/Editor/Debugging/DebugWindow.uxml";
-
-        bool m_IsDirty;
-
-        Vector2 m_PanelScroll;
-        Vector2 m_ContentScroll;
 
         void OnEnable()
         {
             DebugManager.instance.displayEditorUI = true;
 
-            DebugManager.instance.refreshEditorRequested = false;
-
             hideFlags = HideFlags.HideAndDontSave;
             autoRepaintOnSceneChange = true;
 
-            if (m_WidgetStates == null || !AreWidgetStatesValid())
-                m_WidgetStates = new WidgetStateDictionary();
-            if (s_WidgetStateMap == null || s_TypeMapDirty)
-                RebuildTypeMaps();
-
-            DebugManager.instance.onSetDirty += MarkDirty;
+            DebugManager.instance.onSetDirty += RequestRebuild;
+            DebugManager.instance.onRecreateDebugUI += RequestRebuild;
+            DebugManager.instance.onPanelSelectionRequested += SetSelectedPanel;
 
             GraphicsToolLifetimeAnalytic.WindowOpened<DebugWindow>();
 
-            HookLegacyWidgetStateHandlingCallbacks();
             HookValueChangedAnalytics();
         }
 
@@ -160,6 +147,15 @@ namespace UnityEditor.Rendering
             GraphicsToolUsageAnalytic.ActionPerformed<DebugWindow>("Widget Value Changed", analytic.ToNestedColumn());
         }
 
+        private void OnDisable()
+        {
+            DebugManager.instance.onSetDirty -= RequestRebuild;
+            DebugManager.instance.onRecreateDebugUI -= RequestRebuild;
+            DebugManager.instance.onPanelSelectionRequested -= SetSelectedPanel;
+
+            GraphicsToolLifetimeAnalytic.WindowClosed<DebugWindow>();
+        }
+
         // Note: this won't get called if the window is opened when the editor itself is closed
         void OnDestroy()
         {
@@ -172,42 +168,20 @@ namespace UnityEditor.Rendering
                 if (debugWindows.Length == 0)
                     DebugManager.instance.displayEditorUI = false;
             };
-
-            DebugManager.instance.onSetDirty -= MarkDirty;
-
-            DestroyWidgetStates();
         }
 
-        private void OnDisable()
-        {
-            GraphicsToolLifetimeAnalytic.WindowClosed<DebugWindow>();
-        }
+        bool m_NeedsRebuild;
 
-        void MarkDirty()
+        void RequestRebuild()
         {
-            m_IsDirty = true;
+            m_NeedsRebuild = true;
         }
 
         void Update()
         {
-            // If the render pipeline asset has been reloaded we force-refresh widget states in case
-            // some debug values need to be refresh/recreated as well (e.g. frame settings on HD)
-            if (DebugManager.instance.refreshEditorRequested)
+            if (m_NeedsRebuild)
             {
-                ReloadWidgetStates();
-                m_IsDirty = true;
-                DebugManager.instance.refreshEditorRequested = false;
-            }
-
-            string requestedPanel = DebugManager.instance.GetRequestedEditorWindowPanel();
-            if (requestedPanel != null)
-            {
-                SetSelectedPanel(requestedPanel);
-            }
-
-            if (m_IsDirty)
-            {
-                m_IsDirty = false;
+                m_NeedsRebuild = false;
                 RecreateGUI();
             }
         }
@@ -293,6 +267,8 @@ namespace UnityEditor.Rendering
 
             BuildSearchCache();
             InitializeSearchField();
+
+            m_NeedsRebuild = false;
         }
 
         void ResetClicked()
@@ -307,6 +283,14 @@ namespace UnityEditor.Rendering
         {
             if (string.IsNullOrEmpty(panelName))
                 return;
+
+            // UI elements may not be initialized yet if this is called before RecreateGUI
+            if (m_LeftPaneElement == null || m_RightPaneElement == null)
+            {
+                // Just update the selected panel name - RecreateGUI will apply it when it runs
+                m_SelectedPanelName = panelName;
+                return;
+            }
 
             if (selectedPanel != null)
             {

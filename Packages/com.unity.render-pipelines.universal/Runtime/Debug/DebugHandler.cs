@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -75,6 +74,7 @@ namespace UnityEngine.Rendering.Universal
 
         readonly Material m_ReplacementMaterial;
         readonly Material m_HDRDebugViewMaterial;
+        readonly Material m_BatchingTypeDebugMaterial;
 
         HDRDebugViewPass m_HDRDebugViewPass;
         RTHandle m_DebugScreenColorHandle;
@@ -89,8 +89,6 @@ namespace UnityEngine.Rendering.Universal
         RTHandle m_DebugRenderTarget;
 
         RTHandle m_DebugFontTexture;
-
-        private GraphicsBuffer m_debugDisplayConstant;
 
         readonly UniversalRenderPipelineDebugDisplaySettings m_DebugDisplaySettings;
 
@@ -117,7 +115,8 @@ namespace UnityEngine.Rendering.Universal
             m_DebugDisplaySettings.materialSettings.materialDebugMode != DebugMaterialMode.None ||
             m_DebugDisplaySettings.materialSettings.vertexAttributeDebugMode != DebugVertexAttributeMode.None ||
             m_DebugDisplaySettings.materialSettings.materialValidationMode != DebugMaterialValidationMode.None ||
-            m_DebugDisplaySettings.renderingSettings.mipInfoMode != DebugMipInfoMode.None;
+            m_DebugDisplaySettings.renderingSettings.mipInfoMode != DebugMipInfoMode.None ||
+            m_DebugDisplaySettings.renderingSettings.batchingTypeViewEnabled;
 
         /// <inheritdoc/>
         public bool TryGetScreenClearColor(ref Color color)
@@ -128,6 +127,7 @@ namespace UnityEngine.Rendering.Universal
         #endregion
 
         internal Material ReplacementMaterial => m_ReplacementMaterial;
+        internal Material BatchingTypeDebugMaterial => m_BatchingTypeDebugMaterial;
         internal UniversalRenderPipelineDebugDisplaySettings DebugDisplaySettings => m_DebugDisplaySettings;
         internal ref RTHandle DebugScreenColorHandle => ref m_DebugScreenColorHandle;
         internal ref RTHandle DebugScreenDepthHandle => ref m_DebugScreenDepthHandle;
@@ -166,6 +166,8 @@ namespace UnityEngine.Rendering.Universal
 
         internal int stpDebugViewIndex { get { return RenderingSettings.stpDebugViewIndex; } }
 
+        internal bool IsBatchingTypeViewActive => m_DebugDisplaySettings.renderingSettings.batchingTypeViewEnabled;
+
         internal DebugHandler()
         {
             m_DebugDisplaySettings = UniversalRenderPipelineDebugDisplaySettings.Instance;
@@ -174,6 +176,7 @@ namespace UnityEngine.Rendering.Universal
             {
                 m_ReplacementMaterial = (shaders.debugReplacementPS != null) ? CoreUtils.CreateEngineMaterial(shaders.debugReplacementPS) : null;
                 m_HDRDebugViewMaterial = (shaders.hdrDebugViewPS != null) ? CoreUtils.CreateEngineMaterial(shaders.hdrDebugViewPS) : null;
+                m_BatchingTypeDebugMaterial = (shaders.batchingTypeDebugPS != null) ? CoreUtils.CreateEngineMaterial(shaders.batchingTypeDebugPS) : null;
             }
 
             m_HDRDebugViewPass = new HDRDebugViewPass(m_HDRDebugViewMaterial);
@@ -183,8 +186,6 @@ namespace UnityEngine.Rendering.Universal
             {
                 m_DebugFontTexture = RTHandles.Alloc(m_RuntimeTextures.debugFontTexture);
             }
-
-            m_debugDisplayConstant = new GraphicsBuffer(GraphicsBuffer.Target.Constant, 32, Marshal.SizeOf(typeof(Vector4)));
         }
 
         public void Dispose()
@@ -193,9 +194,9 @@ namespace UnityEngine.Rendering.Universal
             m_DebugScreenColorHandle?.Release();
             m_DebugScreenDepthHandle?.Release();
             m_DebugFontTexture?.Release();
-            m_debugDisplayConstant.Dispose();
             CoreUtils.Destroy(m_HDRDebugViewMaterial);
             CoreUtils.Destroy(m_ReplacementMaterial);
+            CoreUtils.Destroy(m_BatchingTypeDebugMaterial);
         }
 
         internal bool IsActiveForCamera(bool isPreviewCamera)
@@ -253,9 +254,7 @@ namespace UnityEngine.Rendering.Universal
                 cmd.DisableShaderKeyword("_DEBUG_ENVIRONMENTREFLECTIONS_OFF");
             }
 
-            m_debugDisplayConstant.SetData(MaterialSettings.debugRenderingLayersColors, 0, 0, 32);
-
-            cmd.SetGlobalConstantBuffer(m_debugDisplayConstant, "_DebugDisplayConstant", 0, m_debugDisplayConstant.count * m_debugDisplayConstant.stride);
+            cmd.SetGlobalVectorArray("_DebugRenderingLayerMaskColors", MaterialSettings.debugRenderingLayersColors);
 
             if (MaterialSettings.renderingLayersSelectedLight)
                 cmd.SetGlobalInt("_DebugRenderingLayerMask", (int)MaterialSettings.GetDebugLightLayersMask());

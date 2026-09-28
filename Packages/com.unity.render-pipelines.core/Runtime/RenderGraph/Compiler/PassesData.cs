@@ -157,7 +157,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
         public bool hasShadingRateStates;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Name GetName(CompilerContextData ctx) => ctx.GetFullPassName(passId);
+        public string GetName(CompilerContextData ctx) => ctx.GetPassName(passId);
 
         public PassData(in RenderGraphPass pass, int passIndex)
         {
@@ -518,6 +518,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
         ClearImported,
         ClearCreated,
         FullyRewritten,
+        DontCareMemoryless,
 
         Count
     }
@@ -532,6 +533,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
             "The resource is imported in the graph but was imported with the 'clear on first use' option enabled. The data is cleared.",
             "The resource is created in this pass and cleared on first use.",
             "The pass indicated it will rewrite the full resource contents. Existing contents are not loaded or cleared.",
+            "The resource is marked as memoryless. No data is loaded."
         };
 
         public readonly LoadReason reason;
@@ -612,6 +614,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
         ExtendedFeatureFlagsIncompatible, // Handles the case where flags added via SetExtendedFeatureFlags are not compatible
         PassMergingDisabled, // Wasn't merged because pass merging is disabled
         BackbufferInMultipleRenderTargetsNotSupported, // Prevent RG pass merging if one pass targets the backbuffer and the other pass some user render targets
+        MixedAllDepthSlicesAndSingleDepthSlice, // Prevent RG pass merging if one pass targets all depth slices while the other pass targets an individual depth slice
         Merged, // I actually got merged
 
         Count
@@ -651,6 +654,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
             "Extended feature flags are incompatible",
             "Pass merging is disabled so this pass was not merged",
             "One pass targets the backbuffer while the other pass targets some user texture, this is not supported on this platform.",
+            "The passes use the same resource using different depth slice modes (all slices (-1) vs specific single slice).",
             "The next pass got merged into this pass.",
         };
     }
@@ -814,15 +818,6 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
             return ctx.compactedNonCulledRasterPasses.MakeReadOnlySpan(firstCompactedNonCulledRasterPass, lastCompactedNonCulledRasterPass - firstCompactedNonCulledRasterPass + 1);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void GetGraphPassNames(CompilerContextData ctx, DynamicArray<Name> dest)
-        {
-            foreach (ref readonly var pass in GraphPasses(ctx))
-            {
-                dest.Add(pass.GetName(ctx));
-            }
-        }
-
         static bool CanMergeMSAASamples(ref NativePassData nativePass, ref PassData passToMerge)
         {
             return (nativePass.samples == passToMerge.fragmentInfoSamples) ||
@@ -961,7 +956,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
             if (passToMerge.numFragments > 0)
             {
                 // Temporary cache of sampled textures in current Native Render Pass for conflict detection against fragments
-                using (HashSetPool<int>.Get(out var tempSampledTextures))
+                using (UnityEngine.Pool.HashSetPool<int>.Get(out var tempSampledTextures))
                 {
                     for (int i = nativePass.firstGraphPass; i < nativePass.lastGraphPass + 1; ++i)
                     {
@@ -988,6 +983,19 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                             {
                                 alreadyAttached = true;
                                 break;
+                            }
+
+                            // We can't mix "all slices" binding with "single slice" binding for the same resource in a native render pass, so we need to break the merge if we detect this case
+                            // Note generally we do allow mixing "all slices" with explicit slices in a single pass of *different* resources as -1 is often used as a "Default / don't care" argument
+                            // See https://jira.unity3d.com/browse/UUM-145513 for details.
+                            if (nativePass.fragments[i].resource.index == fragment.resource.index)
+                            {
+                                int curDs = nativePass.fragments[i].depthSlice;
+                                int newDS = fragment.depthSlice;
+                                if (curDs != newDS && (curDs == -1 || newDS == -1))
+                                {
+                                    return new PassBreakAudit(PassBreakReason.MixedAllDepthSlicesAndSingleDepthSlice, passIdToMerge);                                
+                                }
                             }
                         }
 
@@ -1102,6 +1110,10 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
 
         static bool TotalAttachmentsSizeExceedPixelStorageLimit(CompilerContextData contextData, ref NativePassData nativePass, ref FixedAttachmentArray<PassFragmentData> attachmentsToTryAdding)
         {
+            // A merge that adds no attachment cannot grow the tile footprint, so it can never exceed the limit
+            if (attachmentsToTryAdding.size == 0)
+                return false;
+
             // TODO: We are currently only checking for iOS GPU Family 1 to 3 since the storage size is much more restricted (16 bytes for Family 1 and 32 for Family 2 & 3).
             // This is temporary. Later on, we should check all iOS GPU Families but also Android (Vulkan) to avoid the same potential restrictions.
             if (Application.platform == RuntimePlatform.IPhonePlayer && SystemInfo.maxTiledPixelStorageSize <= 32)
@@ -1124,7 +1136,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
 
                 return totalSize > SystemInfo.maxTiledPixelStorageSize;
             }
-            
+
             return false;
         }
 
@@ -1194,7 +1206,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                             // Depth input attachments cannot have write access
                             throw new InvalidOperationException(
                                 RenderGraph.RenderGraphExceptionMessages.DepthInputAttachmentWithWriteAccess(
-                                    passToMerge.GetName(contextData).name));
+                                    passToMerge.GetName(contextData)));
                         }
                     }
 #endif
@@ -1317,7 +1329,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                                 // Depth input attachments cannot have write access
                                 throw new InvalidOperationException(
                                     RenderGraph.RenderGraphExceptionMessages.DepthInputAttachmentWithWriteAccess(
-                                        passToMerge.GetName(contextData).name));
+                                        passToMerge.GetName(contextData)));
                             }
                         }
 #endif

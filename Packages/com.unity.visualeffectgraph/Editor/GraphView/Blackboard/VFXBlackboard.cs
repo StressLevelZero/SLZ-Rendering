@@ -256,6 +256,7 @@ namespace UnityEditor.VFX.UI
             m_Treeview.bindItem += BindItem;
             m_Treeview.unbindItem += UnbindItem;
             m_Treeview.selectionChanged += OnSelectionChanged;
+            m_Treeview.RegisterCallback<NavigationMoveEvent>(OnTreeViewNavigationMove, TrickleDown.TrickleDown);
             // Trickle down because on macOS the context menu is opened on PointerDown event which stop the event propagation
             m_Treeview.RegisterCallback<PointerDownEvent>(OnTreeViewPointerDown, TrickleDown.TrickleDown);
             Add(m_Treeview);
@@ -297,7 +298,7 @@ namespace UnityEditor.VFX.UI
             m_PathLabel = labelContainer.Q<Label>("subTitleLabel");
             m_PathLabel.RegisterCallback<MouseDownEvent>(OnMouseDownSubTitle);
 
-            m_PathTextField = new TextField();
+            m_PathTextField = new TextField(128, false, false, '*');
             m_PathTextField.style.display = DisplayStyle.None;
             m_PathTextField.Q(TextField.textInputUssName).RegisterCallback<FocusOutEvent>(OnEditPathTextFinished, TrickleDown.TrickleDown);
             m_PathTextField.Q(TextField.textInputUssName).RegisterCallback<KeyDownEvent>(OnPathTextFieldKeyPressed, TrickleDown.TrickleDown);
@@ -355,7 +356,7 @@ namespace UnityEditor.VFX.UI
                             {
                                 AddToSelection(parameterItem.selectable);
                             }
-                            else
+                            else if (parameterItem is not AttributeSeparator)
                             {
                                 lastPendingItem = parameterItem;
                             }
@@ -489,7 +490,7 @@ namespace UnityEditor.VFX.UI
                 {
                     m_IsChangingSelection = false;
                 }
-                    
+
                 return DragVisualMode.Move;
             }
 
@@ -526,42 +527,45 @@ namespace UnityEditor.VFX.UI
 
             var parentItem = m_Treeview.GetItemDataForId<IParameterItem>(arg.parentId);
 
-            if (arg.dropPosition == DragAndDropPosition.OverItem)
+            switch (arg.dropPosition)
             {
-                foreach (var selectedItem in m_Treeview.selectedItems)
-                {
-                    if (selectedItem is PropertyItem)
+                case DragAndDropPosition.OverItem:
+                    if (parentItem is PropertyCategory)
                     {
-                        return DragVisualMode.Move;
+                        // Allow properties to be moved into a category
+                        if (m_Treeview.selectedItems.All(x => x is PropertyItem))
+                        {
+                            return DragVisualMode.Move;
+                        }
                     }
+                    break;
 
-                    if (selectedItem is PropertyCategory { isRoot: false })
+                case DragAndDropPosition.BetweenItems:
+                    if (parentItem is PropertyCategory propertyCategory)
                     {
-                        return parentItem.Accept(selectedItem as IParameterItem) ? DragVisualMode.Move : DragVisualMode.Rejected;
+                        // Allow properties to be moved and reordered inside any property category
+                        if (m_Treeview.selectedItems.All(x => x is PropertyItem))
+                        {
+                            return DragVisualMode.Move;
+                        }
+                        // Allow categories to be reordered inside the root category
+                        else if (propertyCategory.isRoot && m_Treeview.selectedItems.All(x => x is PropertyCategory))
+                        {
+                            return DragVisualMode.Move;
+                        }
                     }
-                }
-            }
-            // Allow properties or categories to be moved inside the root category
-            else if (arg.dropPosition == DragAndDropPosition.BetweenItems && parentItem is PropertyCategory { isRoot: true})
-            {
-                return DragVisualMode.Move;
-            }
-            // Allow properties only to be moved inside a non-root category
-            else if (arg.dropPosition == DragAndDropPosition.BetweenItems && parentItem is PropertyCategory && m_Treeview.selectedItems.All(x => x is PropertyAttribute))
-            {
-                return DragVisualMode.Move;
-            }
-            else if (arg.dropPosition == DragAndDropPosition.BetweenItems && parentItem is CustomAttributeCategory && m_Treeview.selectedItems.All(x => x is AttributeItem))
-            {
-                return DragVisualMode.Move;
-            }
-            else if (arg.dropPosition == DragAndDropPosition.OutsideItems)
-            {
-                return DragVisualMode.Move;
-            }
-            else if (arg.dropPosition == DragAndDropPosition.BetweenItems && parentItem is PropertyCategory && m_Treeview.selectedItem is PropertyItem)
-            {
-                return DragVisualMode.Move;
+                    else if (parentItem is CustomAttributeCategory)
+                    {
+                        // Allow custom attributes to be reordered
+                        if (m_Treeview.selectedItems.All(x => x is AttributeItem xAttr && !xAttr.isBuiltIn))
+                        {
+                            return DragVisualMode.Move;
+                        }
+                    }
+                    break;
+
+                case DragAndDropPosition.OutsideItems:
+                    return DragVisualMode.Move;
             }
 
             return DragVisualMode.Rejected;
@@ -679,6 +683,22 @@ namespace UnityEditor.VFX.UI
             }
             toggle.RegisterCallback<ChangeEvent<bool>, IParameterItem>(OnToggleExpandRow, item);
             rootElement.AddToClassList(item.isLast ? "last" : null);
+        }
+
+        private void OnTreeViewNavigationMove(NavigationMoveEvent evt)
+        {
+            if (evt.direction != NavigationMoveEvent.Direction.Left)
+                return;
+            if (m_Treeview.selectedItem is not AttributeSeparator separator)
+                return;
+
+            var parentId = m_Treeview.viewController.GetParentId(separator.id);
+            if (parentId != -1)
+            {
+                m_Treeview.SetSelectionById(parentId);
+                m_Treeview.ScrollToItemById(parentId);
+            }
+            evt.StopPropagation();
         }
 
         private void OnToggleExpandRow(ChangeEvent<bool> evt, IParameterItem item)
@@ -815,8 +835,8 @@ namespace UnityEditor.VFX.UI
 
         public void AddCategory(string initialName)
         {
-            var categories = m_Controller.graph.UIInfos.categories.Select(x => x.name).ToHashSet();
-            var newCategoryName = VFXParameterController.MakeNameUnique(initialName, categories);
+            var categories = m_Controller.graph.UIInfos.categories.Select(x => x.name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newCategoryName = VFXParameterController.MakeNameUnique(initialName, categories, true, VFXBlackboardCategory.kMaxCategoryNameLength);
 
             controller.graph.UIInfos.categories ??= new List<VFXUI.CategoryInfo>();
             controller.graph.UIInfos.categories.Add(new VFXUI.CategoryInfo { name = newCategoryName });
@@ -834,7 +854,7 @@ namespace UnityEditor.VFX.UI
         public string DuplicateCategory(string category, string[] parametersToDuplicate = null)
         {
             // Create treeview item first so that duplicated category's parameters (if any) will find the parent category
-            var newCategoryName = VFXParameterController.MakeNameUnique(category, controller.graph.UIInfos.categories?.Select(x => x.name).ToHashSet() ?? new HashSet<string>());
+            var newCategoryName = VFXParameterController.MakeNameUnique(category, controller.graph.UIInfos.categories?.Select(x => x.name).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase), true, VFXBlackboardCategory.kMaxCategoryNameLength);
             var parentId = m_ParametersController.SelectMany(GetDataRecursive).Single(x => x.children.Any(x => string.Compare(x.data.title, category, StringComparison.OrdinalIgnoreCase) == 0)).id;
             var newId = m_Treeview.viewController.GetAllItemIds().Max() + 1;
             m_Treeview.AddItem(new TreeViewItemData<IParameterItem>(newId, new PropertyCategory(newCategoryName, newId, false, true)), parentId, -1, true);
@@ -1149,7 +1169,7 @@ namespace UnityEditor.VFX.UI
 
         private void OnAddCustomAttribute(object parameter)
         {
-            var newName = m_Controller.graph.attributesManager.FindUniqueName("CustomAttribute");
+            var newName = m_Controller.graph.attributesManager.FindUniqueName(VFXAttributesManager.s_DefaultCustomAttributeName);
             if (m_Controller.graph.TryAddCustomAttribute(newName, (VFXValueType)parameter, string.Empty, false, out var newCustomAttribute))
             {
                 var parentTreeviewItem = m_ParametersController.SelectMany(GetDataRecursive).Single(x => string.Compare(x.data.title, CustomAttributeCategory.Title, StringComparison.OrdinalIgnoreCase) == 0);
@@ -1194,7 +1214,7 @@ namespace UnityEditor.VFX.UI
             if (showProperties)
             {
                 var prexif = showAttributes ? "Property/" : string.Empty;
-                menu.AddItem(EditorGUIUtility.TrTextContent($"{prexif}Category"), false, OnAddCategory);
+                menu.AddItem(L10n.TextContent($"{prexif}Category", null, null, null), false, OnAddCategory);
                 menu.AddSeparator(prexif);
                 var parameters = GetSortedParameters().ToArray();
                 foreach (var parameter in parameters)
@@ -1220,7 +1240,7 @@ namespace UnityEditor.VFX.UI
         {
             if (TryGetValidCategoryName(ref newTitle))
             {
-                if (controller.RenameCategory(cat.title, newTitle))
+                if (cat.title != newTitle && controller.RenameCategory(cat.title, newTitle))
                 {
                     cat.title = newTitle;
                     cat.category.title = newTitle;
@@ -1323,7 +1343,7 @@ namespace UnityEditor.VFX.UI
                 // Properties
                 if (m_ViewMode.HasFlag(ViewMode.Properties))
                 {
-                    var groupedParameterByCategory = new Dictionary<string, List<VFXParameterController>>();
+                    var groupedParameterByCategory = new Dictionary<string, List<VFXParameterController>>(StringComparer.OrdinalIgnoreCase);
                     var categoryInfos = controller.graph.UIInfos.categories;
                     for (var i = 0; i < categoryInfos.Count; i++)
                     {
@@ -1443,15 +1463,17 @@ namespace UnityEditor.VFX.UI
 
         private int SortCategory(string category, List<VFXParameterController> parameters)
         {
-            switch (category)
+            if (string.IsNullOrEmpty(category))
             {
-                case "":
-                    return 0;
-                case OutputCategory.Label:
-                    return 1;
-                default:
-                    return m_View.controller.GetCategoryIndex(category) + 2;
+                return 0;
             }
+
+            if (string.Compare(category, OutputCategory.Label, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                return 1;
+            }
+
+            return m_View.controller.GetCategoryIndex(category) + 2;
         }
 
         private void SynchronizeExpandState()
@@ -1560,18 +1582,23 @@ namespace UnityEditor.VFX.UI
             m_Treeview.viewController.ExpandItem(treeviewItem.id, false, true);
         }
 
+        public static readonly string[] reservedCategoryNames =
+        {
+            PropertiesCategoryTitle,
+            AttributesCategoryTitle,
+            BuiltInAttributesCategoryTitle,
+            OutputCategory.Label,
+            CustomAttributeCategory.Title,
+        };
+
+        public static bool IsReservedCategoryName(string category)
+        {
+            return reservedCategoryNames.Any(t => string.Equals(t, category, StringComparison.OrdinalIgnoreCase));
+        }
+
         private string FilterOutReservedCategoryName(string category)
         {
-            switch (category)
-            {
-                case PropertiesCategoryTitle:
-                case BuiltInAttributesCategoryTitle:
-                case OutputCategory.Label:
-                case CustomAttributeCategory.Title:
-                    return string.Empty;
-            }
-
-            return category;
+            return IsReservedCategoryName(category) ? string.Empty : category;
         }
 
         internal void ScrollToItem(string itemName)

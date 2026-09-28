@@ -2,7 +2,6 @@ using System.Linq;
 using System.IO;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 using UnityEditor.Graphing;
 
 namespace UnityEditor.ShaderGraph.UnitTests
@@ -275,8 +274,10 @@ namespace UnityEditor.ShaderGraph.UnitTests
             }
         }
 
+#if ENABLE_CORECLR
+        [Explicit("MultiJson-serialized ShaderGraph written to disk fails to reimport on CoreCLR (JSON parse error: The document root must not follow by other values), so no Shader sub-assets are produced, see https://jira.unity3d.com/browse/UUM-150436")]
+#endif
         [Test]
-        [UnityPlatform(exclude = new RuntimePlatform[] { RuntimePlatform.WindowsEditor })] // Unstable: https://jira.unity3d.com/browse/UUM-141869
         public void CanBuildMultipleShaders()
         {
             GraphData graph = new GraphData();

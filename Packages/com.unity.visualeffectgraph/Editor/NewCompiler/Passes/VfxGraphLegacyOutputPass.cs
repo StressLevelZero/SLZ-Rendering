@@ -9,7 +9,9 @@ namespace UnityEditor.VFX
 {
     class VfxGraphLegacyCompilationOutput
     {
-        public List<UnityEditor.VFX.VFXExpressionDesc> SheetExpressions { get; } = new();
+        public List<UnityEditor.VFX.VFXExpression> SheetExpressions { get; } = new();
+        public Dictionary<UnityEditor.VFX.VFXExpression, uint> SheetExpressionIndices { get; } = new();
+        public List<UnityEditor.VFX.VFXExpressionDesc> SheetExpressionsDescs { get; } = new();
         public List<UnityEditor.VFX.VFXExpressionDesc> SheetExpressionsPerSpawnEventAttribute { get; } = new();
         public List<UnityEditor.VFX.VFXExpressionValueContainerDesc> SheetValues { get; } = new();
         public List<UnityEditor.VFX.VFXExposedMapping> SheetExposed { get; } = new();
@@ -35,7 +37,7 @@ namespace UnityEditor.VFX
             vfxAssetDesc.sheet = new VFXExpressionSheet()
             {
                 exposed = SheetExposed.ToArray(),
-                expressions = SheetExpressions.ToArray(),
+                expressions = SheetExpressionsDescs.ToArray(),
                 expressionsPerSpawnEventAttribute = SheetExpressionsPerSpawnEventAttribute.ToArray(),
                 values = SheetValues.ToArray()
             };
@@ -49,44 +51,28 @@ namespace UnityEditor.VFX
 
             return vfxAssetDesc;
         }
+
+        public VFXExpressionCompiledData CreateCompiledData()
+        {
+            // TODO: SheetExpressionIndices only holds reduced expressions, so FindReducedExpressionIndexFromSlotCPU
+            // misses for slot expressions that were reduced away. The pre-reduction mapping isn't tracked yet
+            return new VFXExpressionCompiledData(SheetExpressions, SheetValues.ToArray(), SheetExpressionIndices);
+        }
     }
 
     class VfxGraphLegacyOutputPass : DataGenerationPass<VfxGraphLegacyCompilationOutput>
     {
         VfxGraphLegacyCompilationOutput m_currentOutput;
 
-        static readonly Dictionary<System.Type, UnityEngine.VFX.VFXValueType> s_ValueTypeConversion = new()
-        {
-            { typeof(float), UnityEngine.VFX.VFXValueType.Float },
-            { typeof(Vector2), UnityEngine.VFX.VFXValueType.Float2 },
-            { typeof(Vector3), UnityEngine.VFX.VFXValueType.Float3 },
-            { typeof(Vector4), UnityEngine.VFX.VFXValueType.Float4 },
-            { typeof(Color), UnityEngine.VFX.VFXValueType.Float4 },
-            { typeof(int), UnityEngine.VFX.VFXValueType.Int32 },
-            { typeof(uint), UnityEngine.VFX.VFXValueType.Uint32 },
-            { typeof(EntityId), UnityEngine.VFX.VFXValueType.EntityId },
-            { typeof(Texture2D), UnityEngine.VFX.VFXValueType.Texture2D },
-            { typeof(Texture2DArray), UnityEngine.VFX.VFXValueType.Texture2DArray },
-            { typeof(Texture3D), UnityEngine.VFX.VFXValueType.Texture3D },
-            { typeof(Cubemap), UnityEngine.VFX.VFXValueType.TextureCube },
-            { typeof(CubemapArray), UnityEngine.VFX.VFXValueType.TextureCubeArray },
-            { typeof(Matrix4x4), UnityEngine.VFX.VFXValueType.Matrix4x4 },
-            { typeof(AnimationCurve), UnityEngine.VFX.VFXValueType.Curve },
-            { typeof(Gradient), UnityEngine.VFX.VFXValueType.ColorGradient },
-            { typeof(Mesh), UnityEngine.VFX.VFXValueType.Mesh },
-            { typeof(SkinnedMeshRenderer), UnityEngine.VFX.VFXValueType.SkinnedMeshRenderer },
-            { typeof(bool), UnityEngine.VFX.VFXValueType.Boolean },
-            { typeof(GraphicsBuffer), UnityEngine.VFX.VFXValueType.Buffer },
-        };
-
         readonly Dictionary<IDataDescription, uint> m_GpuBufferDescIndices = new();
         readonly Dictionary<IDataDescription, uint> m_CpuBufferDescIndices = new();
         readonly Dictionary<DataNodeId, uint> m_ValuesExpressionIndices = new();
+        // Expressions are interned by VFXExpression's own cache and compare by value, so the same
+        // sub-expression is reached from many roots. Memoize its sheet index instead of re-emitting it.
+        readonly Dictionary<VFXExpression, uint> m_ExpressionIndexCache = new();
         readonly Dictionary<VfxGraphLegacyParticleSystemContainer.ParticleSystem, int> m_ParticleSystemIndices = new();
         readonly List<uint> m_StartSystems = new();
         readonly List<uint> m_StopSystems = new();
-
-        static UnityEngine.VFX.VFXValueType GetVFXValueTypeFromType(System.Type type) => s_ValueTypeConversion.TryGetValue(type, out var valueType) ? valueType : UnityEngine.VFX.VFXValueType.None;
 
         public VfxGraphLegacyCompilationOutput Execute(ref CompilationContext context)
         {
@@ -111,6 +97,9 @@ namespace UnityEditor.VFX
 
         uint AddExpressionRecursively(VFXExpression expression)
         {
+            if (m_currentOutput.SheetExpressionIndices.TryGetValue(expression, out var cachedIndex))
+                return cachedIndex;
+
             List<uint> parentExpressionIndices = new();
             foreach (var parentExpression in expression.parents)
             {
@@ -126,6 +115,8 @@ namespace UnityEditor.VFX
                 data[VFXExpression.Operands.OperandCount - expression.additionalOperands.Length + i] = expression.additionalOperands[i];
 
             uint vfxExpressionIndex = AddExpression(expression.operation, data[0], data[1], data[2], data[3]);
+            m_currentOutput.SheetExpressions.Add(expression);
+            m_currentOutput.SheetExpressionIndices[expression] = vfxExpressionIndex;
 
             if (expression.Is(VFXExpression.Flags.Value))
             {
@@ -156,7 +147,7 @@ namespace UnityEditor.VFX
                 {
                     foreach (var childDataNode in dataNode.Children)
                     {
-                        if (childDataNode.TaskNode.Task is GpuKernelTask or PlaceholderSystemTask or RenderingTask or SpawnerTask)
+                        if (childDataNode.TaskNode.Task is VfxTemplatedTask or GpuKernelTask or ParticleSystemTask or RenderingTask or SpawnerTask)
                         {
                             uint vfxExpressionIndex = AddExpressionRecursively(expressionTask.Expression);
                             m_ValuesExpressionIndices.Add(childDataNode.Id, vfxExpressionIndex);
@@ -190,7 +181,7 @@ namespace UnityEditor.VFX
                     layoutElementDescs.Add(new VFXLayoutElementDesc()
                     {
                         name = attribute.Name,
-                        type = GetVFXValueTypeFromType(attribute.Type),
+                        type = VFXExpression.GetVFXValueTypeFromType(attribute.Type),
                         offset = new VFXLayoutOffset()
                         {
                             bucket = bucketOffset,
@@ -526,7 +517,7 @@ namespace UnityEditor.VFX
             // Find graph values buffer in bindings
             foreach (var dataBinding in taskNode.DataBindings)
             {
-                if (dataBinding.BindingDataKey == TemplatedTask.GraphValuesBufferKey)
+                if (dataBinding.BindingDataKey == ParticleSystemTask.GraphValuesBindingKey)
                 {
                     graphValuesContainerId = dataBinding.DataView.DataContainer.Id;
                     break;
@@ -684,17 +675,10 @@ namespace UnityEditor.VFX
                     valueMappings.Add(new VFXMapping(name, (int)expressionIndex));
                 }
             }
-            if (taskNode.Task is GpuKernelTask gpuKernelTask)
-            {
-                //taskDesc.processor = gpuKernelTask.Shader;
-            }
-            else if (taskNode.Task is RenderingTask renderingTask)
-            {
-                //taskDesc.processor = renderingTask.Material;
-            }
 
             taskDesc.values = valueMappings.ToArray();
             taskDesc.buffers = HashSetToArray(bufferMappings);
+            taskDesc.modelId = task.ModelId;
 
             return true;
         }
@@ -753,8 +737,8 @@ namespace UnityEditor.VFX
             vfxExpression.data[1] = data1;
             vfxExpression.data[2] = data2;
             vfxExpression.data[3] = data3;
-            var vfxExpressionIndex = (uint)m_currentOutput.SheetExpressions.Count;
-            m_currentOutput.SheetExpressions.Add(vfxExpression);
+            var vfxExpressionIndex = (uint)m_currentOutput.SheetExpressionsDescs.Count;
+            m_currentOutput.SheetExpressionsDescs.Add(vfxExpression);
             return vfxExpressionIndex;
         }
 
@@ -790,6 +774,7 @@ namespace UnityEditor.VFX
             m_GpuBufferDescIndices.Clear();
             m_CpuBufferDescIndices.Clear();
             m_ValuesExpressionIndices.Clear();
+            m_ExpressionIndexCache.Clear();
             m_ParticleSystemIndices.Clear();
             m_StartSystems.Clear();
             m_StopSystems.Clear();

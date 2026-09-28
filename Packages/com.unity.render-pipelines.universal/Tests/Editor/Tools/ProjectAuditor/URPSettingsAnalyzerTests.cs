@@ -148,7 +148,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             Assert.AreEqual(1, issues.Count, "Should detect not at last version asset");
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0003", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Error, analyzer.Descriptor.DefaultSeverity);
 
             // Cleanup
             UnityEngine.Object.DestroyImmediate(urpAsset);
@@ -409,7 +408,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new MissingRendererFeaturesAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0102", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Error, analyzer.Descriptor.DefaultSeverity);
         }
 
         [Test]
@@ -418,7 +416,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new DuplicateRendererFeaturesAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0103", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Error, analyzer.Descriptor.DefaultSeverity);
         }
 
         [Test]
@@ -427,7 +424,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new InactiveRendererFeaturesAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0104", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Warning, analyzer.Descriptor.DefaultSeverity);
         }
 
         #endregion
@@ -440,7 +436,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new GlobalSettingsAssetAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0201", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Error, analyzer.Descriptor.DefaultSeverity);
             Assert.IsTrue(analyzer.Descriptor.Title.Contains("Global Settings"));
         }
 
@@ -450,8 +445,56 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new DefaultVolumeProfileAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0202", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Warning, analyzer.Descriptor.DefaultSeverity);
             Assert.IsTrue(analyzer.Descriptor.Title.Contains("Volume Profile"));
+        }
+
+        [Test]
+        public void URP0203_ShaderStrippingSettings_HasCorrectDescriptor()
+        {
+            var analyzer = new ShaderStrippingSettingsAnalyzer();
+            Assert.IsNotNull(analyzer.Descriptor);
+            Assert.AreEqual("URP0203", analyzer.Descriptor.Id);
+            Assert.IsTrue(analyzer.Descriptor.Title.Contains("stripping"));
+            Assert.IsNotNull(analyzer.Descriptor.Fixer);
+        }
+
+        [Test]
+        public void IsURPActiveInProject_DetectsURPAssignedOnlyInQualityLevel()
+        {
+            // Arrange: no URP as the default pipeline, but URP assigned on a single quality level. URP shader
+            // stripping still runs for that platform, so the project must be considered URP-active.
+            var urpAsset = ScriptableObject.CreateInstance<UniversalRenderPipelineAsset>();
+            GraphicsSettings.defaultRenderPipeline = null;
+
+            for (int i = 0; i < QualitySettings.names.Length && i < m_PreviousQualitySettings.Length; i++)
+            {
+                QualitySettings.SetQualityLevel(i);
+                QualitySettings.renderPipeline = (i == 0) ? urpAsset : null;
+            }
+
+            // Act / Assert
+            Assert.IsTrue(URPProjectAuditorUtilities.IsURPActiveInProject(),
+                "Should detect URP when assigned only on a quality level, even with no default pipeline");
+
+            // Cleanup (TearDown restores the previous quality/default pipelines)
+            UnityEngine.Object.DestroyImmediate(urpAsset);
+        }
+
+        [Test]
+        public void IsURPActiveInProject_FalseWhenNoURPAnywhere()
+        {
+            // Arrange: no URP as the default pipeline and none on any quality level.
+            GraphicsSettings.defaultRenderPipeline = null;
+
+            for (int i = 0; i < QualitySettings.names.Length && i < m_PreviousQualitySettings.Length; i++)
+            {
+                QualitySettings.SetQualityLevel(i);
+                QualitySettings.renderPipeline = null;
+            }
+
+            // Act / Assert
+            Assert.IsFalse(URPProjectAuditorUtilities.IsURPActiveInProject(),
+                "Should not detect URP when it is not assigned anywhere");
         }
 
         #endregion
@@ -464,7 +507,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new SRPBatcherAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0301", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Warning, analyzer.Descriptor.DefaultSeverity);
             Assert.IsTrue(analyzer.Descriptor.Title.Contains("SRP Batcher"));
         }
 
@@ -541,7 +583,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new StaticBatchingWithSRPBatcherAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0302", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Warning, analyzer.Descriptor.DefaultSeverity);
             Assert.IsTrue(analyzer.Descriptor.Title.Contains("Static Batching"));
         }
 
@@ -650,7 +691,6 @@ namespace UnityEditor.Rendering.Universal.ProjectAuditor.Tests
             var analyzer = new UnmigratedMaterialsAnalyzer();
             Assert.IsNotNull(analyzer.Descriptor);
             Assert.AreEqual("URP0402", analyzer.Descriptor.Id);
-            Assert.AreEqual(Severity.Warning, analyzer.Descriptor.DefaultSeverity);
             Assert.IsTrue(analyzer.Descriptor.Title.Contains("Materials"));
         }
 

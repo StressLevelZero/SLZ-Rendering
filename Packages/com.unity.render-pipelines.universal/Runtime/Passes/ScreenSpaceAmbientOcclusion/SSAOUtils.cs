@@ -28,10 +28,8 @@ namespace UnityEngine.Rendering.Universal
             public static readonly int _BlitTexture = Shader.PropertyToID("_BlitTexture");
             public static readonly int _SourceSize = Shader.PropertyToID("_SourceSize");
 
-#if MODERN_SSAO
             public static readonly int _SSAOParams2 = Shader.PropertyToID("_SSAOParams2");
             public static readonly int _AODepthToViewParams = Shader.PropertyToID("_AODepthToViewParams");
-#endif
         }
 
         // Enums
@@ -57,6 +55,8 @@ namespace UnityEngine.Rendering.Universal
 
             KawaseBlur = 8,
             KawaseAfterOpaque = 9,
+
+            BoxAfterOpaque = 10,
         }
 
         // Camera view data aggregated into a struct to avoid scattered arrays.
@@ -95,11 +95,9 @@ namespace UnityEngine.Rendering.Universal
             internal readonly bool sourceDepthMedium;
             internal readonly bool sourceDepthLow;
             internal readonly Vector4 ssaoParams;
-#if MODERN_SSAO
             internal readonly Vector4 ssaoParams2;
             internal readonly Vector4 depthToViewParams;
             internal readonly bool isGTAOMode;
-#endif
 
             internal SSAOMaterialParams(ScreenSpaceAmbientOcclusionSettings settings, UniversalCameraData cameraData, in TextureDesc cameraColorDesc)
             {
@@ -109,8 +107,7 @@ namespace UnityEngine.Rendering.Universal
                 sampleCountMedium = settings.Samples == ScreenSpaceAmbientOcclusionSettings.AOSampleOption.Medium;
                 sampleCountLow = settings.Samples == ScreenSpaceAmbientOcclusionSettings.AOSampleOption.Low;
 
-#if MODERN_SSAO
-                isGTAOMode = settings.Mode != ScreenSpaceAmbientOcclusionMode.Standard;
+                isGTAOMode = settings.Mode != ScreenSpaceAmbientOcclusionMode.SSAO;
 
                 if (isGTAOMode)
                 {
@@ -127,8 +124,7 @@ namespace UnityEngine.Rendering.Universal
                 }
                 else
                 {
-#endif
-                    // Standard mode
+                    // SSAO mode
                     bool isUsingDepthNormals = settings.Source == ScreenSpaceAmbientOcclusionSettings.DepthSource.DepthNormals;
                     aoBlueNoise = settings.AOMethod == ScreenSpaceAmbientOcclusionSettings.AOMethodOptions.BlueNoise;
                     aoInterleavedGradient = settings.AOMethod == ScreenSpaceAmbientOcclusionSettings.AOMethodOptions.InterleavedGradient;
@@ -136,11 +132,9 @@ namespace UnityEngine.Rendering.Universal
                     sourceDepthHigh = !isUsingDepthNormals && settings.NormalSamples == ScreenSpaceAmbientOcclusionSettings.NormalQuality.High;
                     sourceDepthMedium = !isUsingDepthNormals && settings.NormalSamples == ScreenSpaceAmbientOcclusionSettings.NormalQuality.Medium;
                     sourceDepthLow = !isUsingDepthNormals && settings.NormalSamples == ScreenSpaceAmbientOcclusionSettings.NormalQuality.Low;
-#if MODERN_SSAO
                     ssaoParams2 = Vector4.zero;
                     depthToViewParams = Vector4.zero;
                 }
-#endif
                 ssaoParams = CalculateCommonParams(settings, radius);
             }
 
@@ -157,11 +151,9 @@ namespace UnityEngine.Rendering.Universal
                        && sourceDepthMedium == other.sourceDepthMedium
                        && sourceDepthLow == other.sourceDepthLow
                        && ssaoParams == other.ssaoParams
-#if MODERN_SSAO
                        && ssaoParams2 == other.ssaoParams2
                        && depthToViewParams == other.depthToViewParams
                        && isGTAOMode == other.isGTAOMode
-#endif
                     ;
             }
         }
@@ -367,14 +359,12 @@ namespace UnityEngine.Rendering.Universal
             CoreUtils.SetKeyword(material, ScreenSpaceAmbientOcclusionKeywords.k_AOBlueNoiseKeyword,           matParams.aoBlueNoise);
             CoreUtils.SetKeyword(material, ScreenSpaceAmbientOcclusionKeywords.k_AOInterleavedGradientKeyword, matParams.aoInterleavedGradient);
             material.SetVector(ShaderConstants._SSAOParams, matParams.ssaoParams);
-#if MODERN_SSAO
             CoreUtils.SetKeyword(material, ScreenSpaceAmbientOcclusionKeywords.k_GTAOModeKeyword, matParams.isGTAOMode);
             if (matParams.isGTAOMode)
             {
                 material.SetVector(ShaderConstants._SSAOParams2, matParams.ssaoParams2);
                 material.SetVector(ShaderConstants._AODepthToViewParams, matParams.depthToViewParams);
             }
-#endif
         }
 
         // Pass data classes for shared raster recording
@@ -429,13 +419,10 @@ namespace UnityEngine.Rendering.Universal
                 passData.aoTexture = aoTexture;
 
                 builder.SetRenderAttachment(passData.aoTexture, 0, AccessFlags.WriteAll);
-
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. SSAO raster AO pass requires a depth texture.");
                 builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
 
                 if (settings.Source == ScreenSpaceAmbientOcclusionSettings.DepthSource.DepthNormals)
                 {
-                    Debug.Assert(cameraNormalsTexture.IsValid(), "Camera normals texture is invalid. SSAO raster AO pass requires a normals texture when Source is DepthNormals.");
                     builder.UseTexture(cameraNormalsTexture, AccessFlags.Read);
                     passData.cameraNormalsTexture = cameraNormalsTexture;
                 }
@@ -600,14 +587,10 @@ namespace UnityEngine.Rendering.Universal
             else
                 blurTexture = TextureHandle.nullHandle;
 
-#if MODERN_SSAO
             if (settings.IsTemporalFilterActive)
                 temporalTexture = UniversalRenderer.CreateRenderGraphTexture(renderGraph, aoBlurDescriptor, "_SSAO_TemporalTexture", false, Color.clear, FilterMode.Bilinear);
             else
                 temporalTexture = TextureHandle.nullHandle;
-#else
-            temporalTexture = TextureHandle.nullHandle;
-#endif
 
             if (!settings.AfterOpaque)
                 resourceData.ssaoTexture = finalTexture;

@@ -3095,5 +3095,326 @@ namespace UnityEngine.Rendering.Tests
             Assert.AreNotEqual(default(EntityId), capturedResourceIDs[5], "Resource 5 ID should not be default");
             Assert.AreEqual(capturedResourceIDs[4], capturedResourceIDs[5], "Execution 2: Resources should be aliased again when re-enabled");
         }
+
+        [Test]
+        public void PassesWithMixedAllSlicesAndExplicitSliceShouldNotMerge()
+        {
+            const int kWidth = 4;
+            const int kHeight = 4;
+
+            TextureHandle texture0 = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm });
+            TextureHandle texture1 = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm });
+
+            // Pass A: binds texture1 with depthSlice=-1 (all slices, the default)
+            using (var builder = m_RenderGraph.AddRasterRenderPass<RenderGraphTestPassData>("PassA", out var passData))
+            {
+                builder.SetRenderAttachment(texture0, 0, AccessFlags.Write);
+                builder.SetRenderAttachment(texture1, 1, AccessFlags.Write);
+                builder.AllowPassCulling(false);
+                builder.SetRenderFunc((RenderGraphTestPassData data, RasterGraphContext context) => { });
+            }
+
+            // Pass B: binds texture1 with depthSlice=0 (explicit slice)
+            // This creates a (texture1, mip=0, slice=0) fragment which aliases (texture1, mip=0, slice=-1)
+            // from Pass A. Merging these into a single native render pass would create aliased
+            // framebuffer attachments with independently computed load/store actions, producing
+            // incorrect rendering.
+            using (var builder = m_RenderGraph.AddRasterRenderPass<RenderGraphTestPassData>("PassB", out var passData))
+            {
+                builder.SetRenderAttachment(texture0, 0, AccessFlags.Write);
+                builder.SetRenderAttachment(texture1, 1, AccessFlags.Write, 0, 0);
+                builder.AllowPassCulling(false);
+                builder.SetRenderFunc((RenderGraphTestPassData data, RasterGraphContext context) => { });
+            }
+
+            var result = m_RenderGraph.CompileNativeRenderGraph(m_RenderGraph.ComputeGraphHash());
+            var passes = result.contextData.GetNativePasses();
+
+            // Should NOT merge: mixing slice=-1 and slice=0 for texture1 creates aliased attachments
+            Assert.AreEqual(2, passes.Count, "Passes with mixed all-slices (-1) and explicit slice (0) bindings for the same texture must not merge into a single native render pass.");
+            Assert.AreEqual(PassBreakReason.MixedAllDepthSlicesAndSingleDepthSlice, passes[0].breakAudit.reason);
+        }
+
+        [Test]
+        public void SinglePassMixingAllSlicesAndExplicitSliceOnColorAttachmentsShouldThrow()
+        {
+            const int kWidth = 4;
+            const int kHeight = 4;
+
+            TextureHandle texture0 = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm });
+
+            // Binding the same texture as two color attachments with slice=-1 and slice=0 in the same pass should throw
+            using (var builder = m_RenderGraph.AddRasterRenderPass<RenderGraphTestPassData>("TestPass", out var passData))
+            {
+                builder.SetRenderAttachment(texture0, 0, AccessFlags.Write); // slice=-1 via default
+                Assert.Throws<System.InvalidOperationException>(() =>
+                {
+                    builder.SetRenderAttachment(texture0, 1, AccessFlags.Write, 0, 0); // explicit slice=0
+                });
+                builder.SetRenderFunc((RenderGraphTestPassData data, RasterGraphContext context) => { });
+            }
+        }
+
+        [Test]
+        public void SinglePassMixingAllSlicesAndExplicitSliceOnInputAndColorShouldThrow()
+        {
+            const int kWidth = 4;
+            const int kHeight = 4;
+
+            TextureHandle texture0 = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm });
+            TextureHandle texture1 = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm });
+
+            // Binding a texture as an input attachment with slice=-1 and then as a color attachment with slice=0 should throw
+            using (var builder = m_RenderGraph.AddRasterRenderPass<RenderGraphTestPassData>("TestPass", out var passData))
+            {
+                builder.SetRenderAttachment(texture1, 0, AccessFlags.Write);
+                builder.SetInputAttachment(texture0, 0, AccessFlags.Read); // slice=-1 via default
+                Assert.Throws<System.InvalidOperationException>(() =>
+                {
+                    builder.SetRenderAttachment(texture0, 1, AccessFlags.Write, 0, 0); // explicit slice=0
+                });
+                builder.SetRenderFunc((RenderGraphTestPassData data, RasterGraphContext context) => { });
+            }
+        }
+
+        [Test]
+        public void SinglePassMixingAllSlicesAndExplicitSliceOnDepthAndColorShouldThrow()
+        {
+            const int kWidth = 4;
+            const int kHeight = 4;
+
+            TextureHandle depthTexture = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.D32_SFloat });
+            TextureHandle colorTexture = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm });
+
+            // Binding a depth texture with slice=0 and then as depth attachment with slice=-1 should throw
+            using (var builder = m_RenderGraph.AddRasterRenderPass<RenderGraphTestPassData>("TestPass", out var passData))
+            {
+                builder.SetRenderAttachment(colorTexture, 0, AccessFlags.Write);
+                builder.SetRenderAttachmentDepth(depthTexture, AccessFlags.Write, 0, 0); // explicit slice=0
+                Assert.Throws<System.InvalidOperationException>(() =>
+                {
+                    builder.SetRenderAttachment(depthTexture, 1, AccessFlags.Write); // slice=-1 via default
+                });
+                builder.SetRenderFunc((RenderGraphTestPassData data, RasterGraphContext context) => { });
+            }
+        }
+
+        [Test]
+        public void PassesWithDifferentExplicitSlicesShouldMerge()
+        {
+            const int kWidth = 4;
+            const int kHeight = 4;
+
+            // Array texture with 4 slices
+            TextureHandle arrayTexture = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { dimension = TextureDimension.Tex2DArray, colorFormat = GraphicsFormat.R8G8B8A8_UNorm, slices = 4 });
+
+            // Pass A: binds arrayTexture at slice 0
+            using (var builder = m_RenderGraph.AddRasterRenderPass<RenderGraphTestPassData>("PassA", out var passData))
+            {
+                builder.SetRenderAttachment(arrayTexture, 0, AccessFlags.Write, 0, 0);
+                builder.AllowPassCulling(false);
+                builder.SetRenderFunc((RenderGraphTestPassData data, RasterGraphContext context) => { });
+            }
+
+            // Pass B: binds arrayTexture at slice 1
+            // Different explicit slices are genuinely separate array layers (no aliasing),
+            // so merging is valid.
+            using (var builder = m_RenderGraph.AddRasterRenderPass<RenderGraphTestPassData>("PassB", out var passData))
+            {
+                builder.SetRenderAttachment(arrayTexture, 1, AccessFlags.Write, 0, 1);
+                builder.AllowPassCulling(false);
+                builder.SetRenderFunc((RenderGraphTestPassData data, RasterGraphContext context) => { });
+            }
+
+            var result = m_RenderGraph.CompileNativeRenderGraph(m_RenderGraph.ComputeGraphHash());
+            var passes = result.contextData.GetNativePasses();
+
+            // Should merge: different explicit slices are separate layers, no aliasing
+            Assert.AreEqual(1, passes.Count, "Passes with different explicit slice bindings (no -1 involved) for the same array texture should merge into a single native render pass.");
+        }
+
+        class SetBufferDataTestPassData
+        {
+            public GraphicsBuffer buffer;
+            public NativeArray<float> dataToSet;
+        }
+
+        [Test]
+        public void SetBufferDataInRasterPassWorks()
+        {
+            const int kBufferSize = 4;
+
+            var testValues = new float[] { 1.0f, 2.0f, 3.0f, 4.0f };
+            var initialData = new float[] { 0.0f, 0.0f, 0.0f, 0.0f };
+
+            // Create buffer with LockBufferForWrite to make it mappable (Dynamic mode) - required for SetBufferData inside render passes
+            var buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, GraphicsBuffer.UsageFlags.LockBufferForWrite, kBufferSize, sizeof(float));
+            buffer.SetData(initialData);
+
+            bool passExecuted = false;
+
+            m_RenderGraphTestPipeline.recordRenderGraphBody = (context, camera, cmd) =>
+            {
+                if (passExecuted)
+                    return;
+
+                passExecuted = true;
+
+                var bufferHandle = m_RenderGraph.ImportBuffer(buffer);
+
+                const int kWidth = 4;
+                const int kHeight = 4;
+                TextureHandle dummyTexture = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm, name = "DummyTexture" });
+
+                using (var builder = m_RenderGraph.AddRasterRenderPass<SetBufferDataTestPassData>("SetBufferDataPass", out var passData))
+                {
+                    passData.buffer = buffer;
+                    passData.dataToSet = new NativeArray<float>(testValues, Allocator.Temp);
+
+                    builder.SetRenderAttachment(dummyTexture, 0, AccessFlags.Write);
+                    builder.UseBuffer(bufferHandle, AccessFlags.Write);
+                    builder.AllowPassCulling(false);
+
+                    builder.SetRenderFunc((SetBufferDataTestPassData data, RasterGraphContext ctx) =>
+                    {
+                        ctx.cmd.SetBufferData(data.buffer, data.dataToSet);
+                    });
+                }
+            };
+
+            m_Camera.Render();
+
+            float[] result = new float[kBufferSize];
+            buffer.GetData(result);
+
+            for (int i = 0; i < kBufferSize; i++)
+            {
+                Assert.AreEqual(testValues[i], result[i], $"Buffer value at index {i} should match the value set via SetBufferData");
+            }
+
+            buffer.Release();
+        }
+
+        [Test]
+        public void SetBufferDataWithOffsetInRasterPassWorks()
+        {
+            const int kBufferSize = 8;
+            const int kOffset = 2;
+
+            var initialData = new float[] { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+            var testValues = new float[] { 10.0f, 20.0f, 30.0f, 40.0f };
+
+            // Use LockBufferForWrite to make it mappable (Dynamic mode) - required for SetBufferData inside render passes
+            var buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, GraphicsBuffer.UsageFlags.LockBufferForWrite, kBufferSize, sizeof(float));
+            buffer.SetData(initialData);
+
+            bool passExecuted = false;
+
+            m_RenderGraphTestPipeline.recordRenderGraphBody = (context, camera, cmd) =>
+            {
+                if (passExecuted)
+                    return;
+
+                passExecuted = true;
+
+                var bufferHandle = m_RenderGraph.ImportBuffer(buffer);
+
+                const int kWidth = 4;
+                const int kHeight = 4;
+                TextureHandle dummyTexture = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm, name = "DummyTexture" });
+
+                using (var builder = m_RenderGraph.AddRasterRenderPass<SetBufferDataTestPassData>("SetBufferDataWithOffsetPass", out var passData))
+                {
+                    passData.buffer = buffer;
+                    passData.dataToSet = new NativeArray<float>(testValues, Allocator.Temp);
+
+                    builder.SetRenderAttachment(dummyTexture, 0, AccessFlags.Write);
+                    builder.UseBuffer(bufferHandle, AccessFlags.Write);
+                    builder.AllowPassCulling(false);
+
+                    builder.SetRenderFunc((SetBufferDataTestPassData data, RasterGraphContext ctx) =>
+                    {
+                        ctx.cmd.SetBufferData(data.buffer, data.dataToSet, 0, kOffset, data.dataToSet.Length);
+                    });
+                }
+            };
+
+            m_Camera.Render();
+
+            var result = new float[kBufferSize];
+            buffer.GetData(result);
+
+            var expectedValues = new float[] { 0.0f, 0.0f, 10.0f, 20.0f, 30.0f, 40.0f, 0.0f, 0.0f };
+
+            for (int i = 0; i < kBufferSize; i++)
+            {
+                Assert.AreEqual(expectedValues[i], result[i], $"Buffer value at index {i} should match expected value after SetBufferData with offset");
+            }
+
+            buffer.Release();
+        }
+
+        [Test]
+        public void SetBufferDataWithNonMappableBufferInRasterPassLogsWarning()
+        {
+            const int kBufferSize = 4;
+
+            var testValues = new float[] { 1.0f, 2.0f, 3.0f, 4.0f };
+            var initialData = new float[kBufferSize];
+
+            // Create buffer WITHOUT LockBufferForWrite - this makes it non-mappable (Immutable mode)
+            var buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, kBufferSize, sizeof(float));
+            buffer.SetData(initialData);
+
+            bool passExecuted = false;
+
+            m_RenderGraphTestPipeline.recordRenderGraphBody = (context, camera, cmd) =>
+            {
+                if (passExecuted)
+                    return;
+
+                passExecuted = true;
+
+                var bufferHandle = m_RenderGraph.ImportBuffer(buffer);
+
+                const int kWidth = 4;
+                const int kHeight = 4;
+                TextureHandle dummyTexture = m_RenderGraph.CreateTexture(new TextureDesc(kWidth, kHeight) { colorFormat = GraphicsFormat.R8G8B8A8_UNorm, name = "DummyTexture" });
+
+                using (var builder = m_RenderGraph.AddRasterRenderPass<SetBufferDataTestPassData>("SetBufferDataNonMappablePass", out var passData))
+                {
+                    passData.buffer = buffer;
+                    passData.dataToSet = new NativeArray<float>(testValues, Allocator.Temp);
+
+                    builder.SetRenderAttachment(dummyTexture, 0, AccessFlags.Write);
+                    builder.UseBuffer(bufferHandle, AccessFlags.Write);
+                    builder.AllowPassCulling(false);
+
+                    builder.SetRenderFunc((SetBufferDataTestPassData data, RasterGraphContext ctx) =>
+                    {
+                        ctx.cmd.SetBufferData(data.buffer, data.dataToSet);
+                    });
+                }
+            };
+
+            m_Camera.Render();
+
+            // Expect the CommandBuffer warning for non-mappable buffer inside render pass (all platforms)
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex(@"The rendering command SetGraphicsBufferData is not supported inside a renderpass"));
+
+            // On D3D12, buffer should still have initial zeros since SetBufferData was rejected at device level.
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Direct3D12)
+            {
+                float[] result = new float[kBufferSize];
+                buffer.GetData(result);
+
+                for (int i = 0; i < kBufferSize; i++)
+                {
+                    Assert.AreEqual(0.0f, result[i], $"Buffer value at index {i} should remain zero since SetBufferData was rejected for non-mappable buffer");
+                }
+            }
+
+            buffer.Release();
+        }
     }
 }

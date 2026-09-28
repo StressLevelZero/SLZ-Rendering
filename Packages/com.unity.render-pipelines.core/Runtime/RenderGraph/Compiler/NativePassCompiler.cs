@@ -366,7 +366,9 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                     ref var ctxPass = ref ctx.passData.ElementAt(passId);
                     ctxPass.ResetAndInitialize(inputPass, passId);
 
-                    ctx.passNames.Add(new Name(inputPass.name, true));
+#if UNITY_ENABLE_CHECKS
+                    ctx.passNames.AddTruncated(inputPass.name);
+#endif
 
                     if (ctxPass.hasSideEffects)
                     {
@@ -633,7 +635,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
 
                 int activeNativePassId = -1;
 #if UNITY_ENABLE_CHECKS
-                bool generatePassBreakAudits = RenderGraphDebugSession.hasActiveDebugSession || s_ForceGenerateAuditsForTests;
+                bool generatePassBreakAudits = RenderGraphDebugSessionManager.hasActiveDebugSession || s_ForceGenerateAuditsForTests;
 #endif
                 int indexSinceLastCulledPass = 0;
                 bool passWasCulled = false;
@@ -1128,16 +1130,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                         if (nativePassAttachment.handle.type == RenderGraphResourceType.Texture)
                         {
                             ref ResourceUnversionedData resData = ref contextData.UnversionedResourceData(nativePassAttachment.handle);
-                            if (storeUVOrigin != TextureUVOriginSelection.Unknown && resData.textureUVOrigin != TextureUVOriginSelection.Unknown && resData.textureUVOrigin != storeUVOrigin)
-                            {
-                                ref NativePassAttachment firstStoreNativePassAttachment = ref nativePassData.attachments[firstStoreAttachmentIndex];
-                                var firstStoreAttachmentName = graph.m_ResourcesForDebugOnly.GetRenderGraphResourceName(firstStoreNativePassAttachment.handle);
-                                var name = graph.m_ResourcesForDebugOnly.GetRenderGraphResourceName(nativePassAttachment.handle);
-
-                                throw new InvalidOperationException($"From pass '{contextData.GetPassName(nativePassData.firstGraphPass)}' to pass '{contextData.GetPassName(nativePassData.lastGraphPass)}' when trying to store resource '{name}' of type {nativePassAttachment.handle.type} at index {nativePassAttachment.handle.index} - "
-                                                                    + RenderGraph.RenderGraphExceptionMessages.IncompatibleTextureUVOriginStore(firstStoreAttachmentName, storeUVOrigin, name, resData.textureUVOrigin));
-                            }
-
+                            ValidateConflictingUVOrigins(ref nativePassData, ref nativePassAttachment, ref resData, storeUVOrigin, firstStoreAttachmentIndex);
                             resData.textureUVOrigin = storeUVOrigin;
                         }
                     }
@@ -1165,6 +1158,29 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                 // No need to go further if we don't support memoryless textures
                 if (!SystemInfo.supportsMemorylessTextures)
                     return;
+
+                // Imported resources can be requested as memoryless at import time (see RenderTargetInfo.isMemoryless), but a
+                // memoryless surface only survives within a single native pass. If its lifetime spans several of them - e.g. a
+                // non-raster pass breaks the merge between two raster passes both using the backbuffer depth - a later pass
+                // would have to Load contents that were never retained, so clear the flag again for those.
+                var textureData = contextData.resources.unversionedData[(int)RenderGraphResourceType.Texture];
+                for (int i = 1; i < textureData.Length; ++i)
+                {
+                    ref var resourceData = ref textureData.ElementAt(i);
+
+                    if (!resourceData.isImported || !resourceData.memoryLess)
+                        continue;
+
+                    // Unused or culled, nothing to adjust.
+                    if (resourceData.firstUsePassID < 0 || resourceData.lastUsePassID < 0)
+                        continue;
+
+                    int firstNativePass = contextData.passData[resourceData.firstUsePassID].nativePassIndex;
+                    int lastNativePass = contextData.passData[resourceData.lastUsePassID].nativePassIndex;
+
+                    if (firstNativePass != lastNativePass)
+                        resourceData.memoryLess = false;
+                }
 
                 // Native renderpasses and create/destroy lists have now been set-up. Detect memoryless resources, i.e resources that are created/destroyed
                 // within the scope of an nrp
@@ -1366,7 +1382,7 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                 // As we have no pass reordering for now the merged passes are always a consecutive list and we can simply do a range
                 // check on the create/destroy passid to see if it's allocated/freed in this native renderpass
 #if UNITY_ENABLE_CHECKS
-                bool generateAudits = RenderGraphDebugSession.hasActiveDebugSession || s_ForceGenerateAuditsForTests;
+                bool generateAudits = RenderGraphDebugSessionManager.hasActiveDebugSession || s_ForceGenerateAuditsForTests;
                 ref var currLoadAudit = ref s_EmptyLoadAudit;
                 ref var currStoreAudit = ref s_EmptyStoreAudit;
 #endif
@@ -1443,6 +1459,14 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
 #if UNITY_ENABLE_CHECKS
                                     if (generateAudits)
                                         currLoadAudit = new LoadAudit(LoadReason.ClearImported);
+#endif
+                                }
+                                else if (resourceData.memoryLess)
+                                {
+                                    loadAction = RenderBufferLoadAction.DontCare;
+#if UNITY_ENABLE_CHECKS
+                                    if (generateAudits)
+                                        currLoadAudit = new LoadAudit(LoadReason.DontCareMemoryless);
 #endif
                                 }
                                 else
@@ -1707,6 +1731,23 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
         }
 
         [Conditional("UNITY_ENABLE_CHECKS")]
+        private void ValidateConflictingUVOrigins(ref NativePassData nativePassData, ref NativePassAttachment nativePassAttachment, ref ResourceUnversionedData resData, TextureUVOriginSelection storeUVOrigin, int firstStoreAttachmentIndex)
+        {
+            if (RenderGraph.enableValidityChecks)
+            {
+                if (storeUVOrigin != TextureUVOriginSelection.Unknown && resData.textureUVOrigin != TextureUVOriginSelection.Unknown && resData.textureUVOrigin != storeUVOrigin)
+                {
+                    ref NativePassAttachment firstStoreNativePassAttachment = ref nativePassData.attachments[firstStoreAttachmentIndex];
+                    var firstStoreAttachmentName = graph.m_ResourcesForDebugOnly.GetRenderGraphResourceName(firstStoreNativePassAttachment.handle);
+                    var name = graph.m_ResourcesForDebugOnly.GetRenderGraphResourceName(nativePassAttachment.handle);
+
+                    throw new InvalidOperationException($"From pass '{contextData.GetPassName(nativePassData.firstGraphPass)}' to pass '{contextData.GetPassName(nativePassData.lastGraphPass)}' when trying to store resource '{name}' of type {nativePassAttachment.handle.type} at index {nativePassAttachment.handle.index} - "
+                                                        + RenderGraph.RenderGraphExceptionMessages.IncompatibleTextureUVOriginStore(firstStoreAttachmentName, storeUVOrigin, name, resData.textureUVOrigin));
+                }
+            }
+        }
+
+        [Conditional("UNITY_ENABLE_CHECKS")]
         private void ValidateNativePass(in NativePassData nativePass, int width, int height, int depth, int samples, int attachmentCount)
         {
             if (RenderGraph.enableValidityChecks)
@@ -1874,25 +1915,22 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
 #if UNITY_ENABLE_CHECKS
                 if (RenderGraph.enableValidityChecks)
                 {
-                    graphPassNamesForDebug.Clear();
-
-                    nativePass.GetGraphPassNames(contextData, graphPassNamesForDebug);
-
+                    // Names are stored pre-encoded as UTF8, so building the debug label is plain byte copies.
                     int utf8CStrDebugNameLength = 0;
-                    foreach (ref readonly Name graphPassName in graphPassNamesForDebug)
+                    foreach (ref readonly var graphPass in nativePass.GraphPasses(contextData))
                     {
-                        utf8CStrDebugNameLength += graphPassName.utf8ByteCount + 1; // +1 to add '/' between passes or the null terminator at the end
+                        utf8CStrDebugNameLength += contextData.passNames.ElementAt(graphPass.passId).Length + 1; // +1 to add '/' between passes or the null terminator at the end
                     }
 
                     var nameBytes = stackalloc byte[utf8CStrDebugNameLength];
                     if (utf8CStrDebugNameLength > 0)
                     {
                         int startStr = 0;
-                        foreach (ref readonly var graphPassName in graphPassNamesForDebug)
+                        foreach (ref readonly var graphPass in nativePass.GraphPasses(contextData))
                         {
-                            int strByteCount = graphPassName.utf8ByteCount;
-                            System.Text.Encoding.UTF8.GetBytes(graphPassName.name.AsSpan(), new Span<byte>(nameBytes + startStr, strByteCount));
-                            startStr += strByteCount;
+                            var utf8Name = contextData.passNames[graphPass.passId];
+                            new ReadOnlySpan<byte>(utf8Name.GetUnsafePtr(), utf8Name.Length).CopyTo(new Span<byte>(nameBytes + startStr, utf8Name.Length));
+                            startStr += utf8Name.Length;
                             // Adding '/' in UTF8
                             nameBytes[startStr++] = (byte)(0x2F);
                         }
@@ -1913,9 +1951,6 @@ namespace UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler
                 CommandBuffer.ThrowOnSetRenderTarget = true;
             }
         }
-
-        const int ArbitraryMaxNbMergedPasses = 16;
-        DynamicArray<Name> graphPassNamesForDebug = new DynamicArray<Name>(ArbitraryMaxNbMergedPasses);
 
         private void ExecuteDestroyResource(InternalRenderGraphContext rgContext, RenderGraphResourceRegistry resources, ref PassData pass)
         {

@@ -84,21 +84,27 @@ namespace UnityEngine.Rendering.Universal
             }
         }
 
+        // Must be kept in sync with API_PREFERS_UBO_OVER_SSBO in the platform API shader includes
         internal static bool useStructuredBuffer
         {
-            // There are some performance issues with StructuredBuffers in some platforms.
-            // We fallback to UBO in those cases.
             get
             {
-                // TODO: For now disabling SSBO until figure out Vulkan binding issues.
-                // When enabling this also enable USE_STRUCTURED_BUFFER_FOR_LIGHT_DATA in shader side in Input.hlsl
-                return false;
+                // - On WebGL and GL older than 4.3, SSBOs are not supported
+                // - On GLES3 and Switch, SSBOs can be slower than UBOs/ConstantBuffers even when the data access is non-uniform across the warps
+                var type = SystemInfo.graphicsDeviceType;
+                return type != GraphicsDeviceType.OpenGLES3 && type != GraphicsDeviceType.OpenGLCore && type != GraphicsDeviceType.Switch;
+            }
+        }
 
-                // We don't use SSBO in D3D because we can't figure out without adding shader variants if platforms is D3D10.
-                //GraphicsDeviceType deviceType = SystemInfo.graphicsDeviceType;
-                //return !Application.isMobilePlatform &&
-                //    (deviceType == GraphicsDeviceType.Metal || deviceType == GraphicsDeviceType.Vulkan ||
-                //     deviceType == GraphicsDeviceType.PlayStation4 || deviceType == GraphicsDeviceType.PlayStation5 || deviceType == GraphicsDeviceType.XboxOne);
+        // Persistent CBUFFERs exist on C# side as Graphics/ComputeBuffer and are filled with SetData(), unlike transient CBUFFERs that have no real existence on C# side
+        internal static bool usePersistentConstantBuffer
+        {
+            get
+            {
+                // - On GLES3 non-WebGL, CBs are disabled (not even transient, see LIGHT_SHADOWS_NO_CBUFFER) due to Adreno perf issues with large CBs
+                // - On WebGL, CBs remains temporarily transient due to a graphics buffer bug
+                // - Everywhere else we use the persistent CB path for optimal performance at shader setup on native engine side.
+                return SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES3;
             }
         }
 
@@ -757,6 +763,11 @@ namespace UnityEngine.Rendering.Universal
             UniversalCameraData cameraData, UniversalLightData lightData, SortingCriteria sortingCriteria)
         {
             Camera camera = cameraData.camera;
+            CullingSplitMask mask = CullingSplitMask.DrawAll;
+
+            if (cameraData.xr.enabled)
+                mask = cameraData.xr.isQuadViewInnerPass ? CullingSplitMask.DrawSplitOnly : CullingSplitMask.DrawCullingOnly;
+
             SortingSettings sortingSettings = new SortingSettings(camera) { criteria = sortingCriteria };
             DrawingSettings settings = new DrawingSettings(shaderTagId, sortingSettings)
             {
@@ -767,6 +778,8 @@ namespace UnityEngine.Rendering.Universal
                 enableInstancing = camera.cameraType != CameraType.Preview,
                 // stencil-based LOD doesn't support native render pass for now.
                 lodCrossFadeStencilMask = renderingData.stencilLodCrossFadeEnabled ? (int)UniversalRendererStencilRef.CrossFadeStencilRef_All : 0,
+
+                splitMask = mask
             };
             return settings;
         }
@@ -931,12 +944,13 @@ namespace UnityEngine.Rendering.Universal
         /// </summary>
         /// <param name="textureUVOrigin">The UV origin of the texture (typically from GetTextureUVOrigin)</param>
         /// <param name="cameraData">Camera data containing view and projection matrices</param>
+        /// <param name="eyeIndex">Eye index used in XR rendering</param>
         /// <returns>The inverse view-projection matrix matching the texture orientation</returns>
-        internal static Matrix4x4 ComputeInverseViewProjectionMatrix(TextureUVOrigin textureUVOrigin, UniversalCameraData cameraData)
+        internal static Matrix4x4 ComputeInverseViewProjectionMatrix(TextureUVOrigin textureUVOrigin, UniversalCameraData cameraData, int eyeIndex = 0)
         {
             bool isFlipped = (textureUVOrigin == TextureUVOrigin.BottomLeft);
-            Matrix4x4 projection = cameraData.GetGPUProjectionMatrix(isFlipped);
-            Matrix4x4 view = cameraData.GetViewMatrix();
+            Matrix4x4 projection = cameraData.GetGPUProjectionMatrix(isFlipped, eyeIndex);
+            Matrix4x4 view = cameraData.GetViewMatrix(eyeIndex);
             Matrix4x4 viewProj = CoreMatrixUtils.MultiplyProjectionMatrix(projection, view, cameraData.camera.orthographic);
             return Matrix4x4.Inverse(viewProj);
         }

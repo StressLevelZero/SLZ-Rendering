@@ -1,6 +1,7 @@
 using Unity.GraphCommon.LowLevel.Editor;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace UnityEditor.VFX
 {
@@ -8,25 +9,19 @@ namespace UnityEditor.VFX
     {
         public bool Execute(ref CompilationContext context)
         {
-            List<TaskNodeId> systemTaskNodeIds = new(); //TODO: Temp, due to graph being fully invalidated when changing data
-
-            foreach (var taskNode in context.graph.TaskNodes)
-            {
-                if (taskNode.Task is PlaceholderSystemTask systemTask)
-                {
-                    systemTaskNodeIds.Add(taskNode.Id);
-                }
-            }
             var particleSystemContainer = context.data.GetOrCreate<VfxGraphLegacyParticleSystemContainer>();
             var layoutCompilationData = context.data.Get<AttributeSetLayoutCompilationData>();
             var traverser = context.graph.CreateTraverser();
 
-            foreach (var systemTaskNodeId in systemTaskNodeIds)
+            using var taskNodeIds = context.graph.TaskNodes.Snapshot();
+            foreach (var taskNodeId in taskNodeIds)
             {
-                var systemTaskNode = context.graph.TaskNodes[systemTaskNodeId];
+                var systemTaskNode = context.graph.TaskNodes[taskNodeId];
+                if (systemTaskNode.Task is not ParticleSystemTask)
+                    continue;
 
                 var particleDataView = systemTaskNode.DataBindings[0].DataView;
-                if (particleDataView.DataDescription is ParticleData particleData)
+                if (particleDataView.DataDescription is ParticleData)
                 {
                     CollectParticleSystem(systemTaskNode, particleDataView, traverser, particleSystemContainer);
                     GenerateDeadList(systemTaskNode, particleDataView, layoutCompilationData, context.graph);
@@ -55,7 +50,7 @@ namespace UnityEditor.VFX
                     continue;
                 }
 
-                if (taskNode.Task is TemplatedTask templatedTask)
+                if (taskNode.Task is VfxTemplatedTask templatedTask)
                 {
                     UnityEngine.VFX.VFXTaskType taskType = UnityEngine.VFX.VFXTaskType.None;
                     switch (templatedTask.TemplateName)
@@ -82,11 +77,11 @@ namespace UnityEditor.VFX
                         default:
                             continue;
                     }
-                    var task = new VfxGraphLegacyParticleSystemContainer.Task(taskNode.Name ?? templatedTask.TemplateName, taskNode.Id, taskType);
+                    var task = new VfxGraphLegacyParticleSystemContainer.Task(taskNode.Name ?? templatedTask.TemplateName, taskNode.Id, taskType, templatedTask.SourceModelId);
                     particleSystem.Tasks.Add(task);
                 }
 
-                if (taskNode.Task is PlaceholderSystemTask)
+                if (taskNode.Task is ParticleSystemTask)
                 {
                     var task = new VfxGraphLegacyParticleSystemContainer.Task("System", taskNode.Id, UnityEngine.VFX.VFXTaskType.None);
                     particleSystem.SetSystemTask(task);
@@ -94,7 +89,7 @@ namespace UnityEditor.VFX
             }
         }
 
-        void GenerateDeadList(TaskNode systemTaskNode, in DataView particleDataView, AttributeSetLayoutCompilationData layoutCompilationData, IMutableGraph graph)
+        void GenerateDeadList(TaskNode systemTaskNode, in DataView particleDataView, AttributeSetLayoutCompilationData layoutCompilationData, IGraph graph)
         {
             if (particleDataView.FindSubData(ParticleData.AttributeDataKey, out var attributeDataView))
             {
@@ -155,12 +150,14 @@ namespace UnityEditor.VFX
             public string Name { get; }
             public TaskNodeId Id { get; }
             public UnityEngine.VFX.VFXTaskType TaskType { get; }
+            public EntityId ModelId { get; }
 
-            public Task(string name, TaskNodeId id, UnityEngine.VFX.VFXTaskType taskType)
+            public Task(string name, TaskNodeId id, UnityEngine.VFX.VFXTaskType taskType, EntityId modelId = default)
             {
                 Name = name;
                 Id = id;
                 TaskType = taskType;
+                ModelId = modelId;
             }
         }
     }

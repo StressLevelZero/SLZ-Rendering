@@ -1405,25 +1405,16 @@ namespace UnityEditor.ShaderGraph
             return edges;
         }
 
-        public void ForeachHLSLProperty(Action<HLSLProperty> action)
+        public void ForeachHLSLProperty(GenerationMode mode, Action<HLSLProperty> action)
         {
             foreach (var prop in properties)
-                prop.ForeachHLSLProperty(action);
+                prop.ForeachHLSLProperty(mode, action);
         }
 
         public void CollectShaderProperties(PropertyCollector collector, GenerationMode generationMode)
         {
             foreach (var prop in properties)
             {
-                // For VFX Shader generation, we must omit exposed properties from the Material CBuffer.
-                // This is because VFX computes properties on the fly in the vertex stage, and packed into interpolator.
-                // this case does not apply to texture2d, which cannot change per element, and are always global
-                if (prop is not Texture2DShaderProperty && generationMode == GenerationMode.VFX && prop.isExposed)
-                {
-                    prop.overrideHLSLDeclaration = true;
-                    prop.hlslDeclarationOverride = HLSLDeclaration.DoNotDeclare;
-                }
-
                 // ugh, this needs to be moved to the gradient property implementation
                 if (prop is GradientShaderProperty gradientProp && generationMode.IsPreview())
                 {
@@ -1661,7 +1652,7 @@ namespace UnityEditor.ShaderGraph
                 case ShaderKeyword keyword:
                 {
                     // must deduplicate ref names against keywords, dropdowns, and properties, as they occupy the same name space
-                    sanitizedName = sanitizedName.ToUpper();
+                    sanitizedName = sanitizedName.ToUpperInvariant();
                     sanitizedName = GraphUtil.DeduplicateName(existingNames, "{0}_{1}", sanitizedName);
                 }
                 break;
@@ -1696,6 +1687,10 @@ namespace UnityEditor.ShaderGraph
                 copyProp.overrideHLSLDeclaration = sourceProp.overrideHLSLDeclaration;
                 copyProp.hlslDeclarationOverride = sourceProp.hlslDeclarationOverride;
                 copyProp.useCustomSlotLabel = sourceProp.useCustomSlotLabel;
+
+                copyProp.customAttributes.Clear();
+                foreach (var attr in sourceProp.customAttributes)
+                    copyProp.customAttributes.Add(new AbstractShaderProperty.PropertyAttribute(attr.name, attr.value));
             }
 
             // sanitize the display name (we let the .Copy() function actually copy the display name over)
@@ -3144,13 +3139,13 @@ namespace UnityEditor.ShaderGraph
                 string actionToTake;
                 if (errorSourceSlot.stageCapability != ShaderStageCapability.None)
                 {
-                    var validStageName = errorSourceSlot.stageCapability.ToString().ToLower();
+                    var validStageName = errorSourceSlot.stageCapability.ToString().ToLowerInvariant();
                     actionToTake = $"reconnect to a {validStageName} block or delete invalid connection";
                 }
                 else
                     actionToTake = "delete invalid connection";
 
-                var invalidStageName = expectedShaderStage.ToString().ToLower();
+                var invalidStageName = expectedShaderStage.ToString().ToLowerInvariant();
                 string message = $"{errorSource} is not compatible with {invalidStageName} block {initialSlot.RawDisplayName()}, {actionToTake}.";
                 AddValidationError(errorNode.objectId, message, ShaderCompilerMessageSeverity.Error);
             }
