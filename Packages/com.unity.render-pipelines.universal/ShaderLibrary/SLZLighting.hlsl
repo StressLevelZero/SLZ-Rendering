@@ -8,6 +8,14 @@
 #define SLZ_PBR_LIGHTING
 #warning USING LEGACY ShaderLibrary/SLZLighting.hlsl! DO NOT USE IN NEW SHADERS! Use ShaderLibrary/SLZ/SLZLighting.hlsl instead!
 
+#if !defined(BRANCH_SCREEN_SPACE_OCCLUSION)
+    #if defined(_SCREEN_SPACE_OCCLUSION_KEYWORD_DECLARED)
+        #define BRANCH_SCREEN_SPACE_OCCLUSION _SCREEN_SPACE_OCCLUSION
+    #else
+        #define BRANCH_SCREEN_SPACE_OCCLUSION 0
+    #endif
+#endif
+
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/EntityLighting.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
