@@ -1013,16 +1013,19 @@ namespace UnityEngine.Rendering.Universal.Internal
 /// END SLZ MODIFIED 
                 }
 
-                cmd.SetGlobalVector(LightConstantBuffer._AdditionalLightsCount, new Vector4(lightData.maxPerObjectAdditionalLightsCount, 0.0f, 0.0f, 0.0f));
+                cmd.SetGlobalVector(LightShaderPropertyId._AdditionalLightsCount, new Vector4(lightData.maxPerObjectAdditionalLightsCount, 0.0f, 0.0f, 0.0f));
             }
             else
             {
-                cmd.SetGlobalVector(LightConstantBuffer._AdditionalLightsCount, Vector4.zero);
+                cmd.SetGlobalVector(LightShaderPropertyId._AdditionalLightsCount, Vector4.zero);
 /// SLZ MODIFIED 2026-09-02 - Add fixed light array for quest  
-                Span<FixedAddressLightsStruct> fixedLightStruct = stackalloc FixedAddressLightsStruct[1];
-                fixedLightStruct[0]._FixedLightCount = 0;
-                cmd.SetBufferDataSpanExt<FixedAddressLightsStruct>(m_FixedAddressLightsBuffer, fixedLightStruct, 0, 0, 1);
-                cmd.SetGlobalConstantBuffer(m_FixedAddressLightsBuffer, idFixedAddressLights, 0, m_FixedAddressLightsBuffer.count * m_FixedAddressLightsBuffer.stride);
+                if (m_FixedAddressLightsBuffer != null)
+                {
+                    Span<FixedAddressLightsStruct> fixedLightStruct = stackalloc FixedAddressLightsStruct[1];
+                    fixedLightStruct[0]._FixedLightCount = 0;
+                    cmd.SetBufferDataSpanExt<FixedAddressLightsStruct>(m_FixedAddressLightsBuffer, fixedLightStruct, 0, 0, 1);
+                    cmd.SetGlobalConstantBuffer(m_FixedAddressLightsBuffer, idFixedAddressLights, 0, m_FixedAddressLightsBuffer.count * m_FixedAddressLightsBuffer.stride);
+                }
 /// END SLZ MODIFIED 
             }
         }

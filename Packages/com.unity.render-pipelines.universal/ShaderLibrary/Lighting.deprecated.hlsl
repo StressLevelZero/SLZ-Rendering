@@ -142,7 +142,7 @@ half3 LightingPhysicallyBased(BRDFData brdfData, BRDFData brdfDataClearCoat, Lig
 half3 LightingPhysicallyBased(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS, float lightAttenuation, half3 normalWS, half3 viewDirectionWS, bool specularHighlights, bool clearCoatEnabled)
 {
     Light light;
-    light.color = lightColor;
+    light.color.rgb = lightColor;
     light.direction = lightDirectionWS;
     light.distanceAttenuation = lightAttenuation;
     light.shadowAttenuation   = 1;

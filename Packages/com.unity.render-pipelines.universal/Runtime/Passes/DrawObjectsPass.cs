@@ -265,20 +265,6 @@ namespace UnityEngine.Rendering.Universal.Internal
                 else
                 {
                     builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
-                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
-                }
-                /// END SLZ MODIFIED
-
-                /// SLZ MODIFIED - Use fragment shading rate image when available
-                if (shadingRateTexture.IsValid())
-                {
-                    builder.SetShadingRateImageAttachment(shadingRateTexture);
-                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
-                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
-                }
-                else
-                {
-                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
                     builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Keep);
                 }
                 /// END SLZ MODIFIED
@@ -441,8 +427,13 @@ namespace UnityEngine.Rendering.Universal.Internal
             }
         }
 
+/// SLZ MODIFIED 2022-09-29 - Add fragment shading rate image
+/*
         internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle colorTarget, in TextureHandle renderingLayersTexture, in TextureHandle depthTarget,
             in TextureHandle mainShadowsTexture, in TextureHandle additionalShadowsTexture, RenderingLayerUtils.MaskSize maskSize, uint batchLayerMask = uint.MaxValue)
+*/
+        internal void Render(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle colorTarget, in TextureHandle renderingLayersTexture, in TextureHandle depthTarget,
+            in TextureHandle mainShadowsTexture, in TextureHandle additionalShadowsTexture, in TextureHandle shadingRateTexture, RenderingLayerUtils.MaskSize maskSize, uint batchLayerMask = uint.MaxValue)
         {
             using (var builder = renderGraph.AddRasterRenderPass<RenderingLayersPassData>(passName, out var passData, profilingSampler))
             {
@@ -451,6 +442,20 @@ namespace UnityEngine.Rendering.Universal.Internal
                 UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
                 UniversalLightData lightData = frameData.Get<UniversalLightData>();
                 UniversalShadowData shadowData = frameData.Get<UniversalShadowData>();
+
+/// SLZ MODIFIED 2022-09-29 - Use fragment shading rate image when available
+                if (shadingRateTexture.IsValid())
+                {
+                    builder.SetShadingRateImageAttachment(shadingRateTexture);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+                else
+                {
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Primitive, ShadingRateCombiner.Max);
+                    builder.SetShadingRateCombiner(ShadingRateCombinerStage.Fragment, ShadingRateCombiner.Max);
+                }
+/// END SLZ MODIFIED
 
                 InitPassData(cameraData, shadowData, ref passData.basePassData, batchLayerMask);
 

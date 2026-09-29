@@ -50,7 +50,7 @@ float4 GetShadowPositionHClip(Attributes input)
     //positionWS.xyz -= vShadowOffsets.x * normalWS.xyz * .01;
 	positionWS.xyz -= vShadowOffsets.y * lightDirectionWS.xyz * .01;
 	//float4 positionCS = TransformObjectToHClip(mul(unity_WorldToObject, float4(positionWS.xyz, 1.0)).xyz);
-    float4 positionCS = ApplySLZShadowBias(positionWS, normalWS, lightDirectionWS);
+    float4 positionCS = TransformWorldToHClip(ApplySLZShadowBias(positionWS, normalWS, lightDirectionWS));
 
 #if UNITY_REVERSED_Z
     positionCS.z = min(positionCS.z, UNITY_NEAR_CLIP_VALUE);

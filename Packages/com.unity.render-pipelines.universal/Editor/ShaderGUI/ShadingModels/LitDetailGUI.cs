@@ -24,8 +24,8 @@ namespace UnityEditor.Rendering.Universal.ShaderGUI
             public static readonly GUIContent detailAlbedoMapFormatError = L10n.TextContent("This texture is not in linear space.", null, null, null);
 
             /// SLZ MODIFIED - Style for HDRP style detail mask
-            public static readonly GUIContent detailMapText = L10n.TrTextContent("Detail Map",
-                "Grayscale overlay blend in the red channel, detail normals in the alpha and green, and smoothness multiplier in blue", null, null, null);
+            public static readonly GUIContent detailMapText = L10n.TextContent("Detail Map",
+                "Grayscale overlay blend in the red channel, detail normals in the alpha and green, and smoothness multiplier in blue", null, null);
             /// END SLZ MODIFIED
         }
 

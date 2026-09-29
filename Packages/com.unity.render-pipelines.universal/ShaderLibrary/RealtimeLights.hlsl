@@ -14,31 +14,6 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Light.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.deprecated.hlsl"
 
-/// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
-#if defined(SLZ_LIGHT_ALPHA_AS_UV)
-    #define LIGHT_VEC half4
-    #define LIGHT_SWIZZLE rgba
-#else
-    #define LIGHT_VEC half3
-    #define LIGHT_SWIZZLE rgb
-#endif
-/// END SLZ MODIFIED 
-
-// Abstraction over Light shading data.
-struct Light
-{
-    half3   direction;
-    /// SLZ MODIFIED 2026-08-31 - Expand light color to half4. We use alpha for uv
-    /*
-    half3   color;
-    */
-    LIGHT_VEC color;
-    /// END SLZ MODIFIED 
-    float   distanceAttenuation; // full-float precision required on some platforms
-    half    shadowAttenuation;
-    uint    layerMask;
-};
-
 /// SLZ MODIFIED - Light alpha now stores UV, not subtractive flag
 /*
 #if USE_CLUSTER_LIGHT_LOOP
@@ -174,7 +149,12 @@ Light GetMainLight(float4 shadowCoord, float3 positionWS, half4 shadowMask, bool
     light.shadowAttenuation = MainLightShadow(shadowCoord, positionWS, shadowMask, _MainLightOcclusionProbes, receiveShadows, isSurfaceTypeTransparent);
 
     real3 cookieColor = SampleMainLightCookie(positionWS);
+/// SLZ MODIFIED 2026-09-29 - expand light to 4 channels, apply blue cookie value to UV as well
+    /*
     light.color *= cookieColor;
+    */
+    light.color *= cookieColor.LIGHT_COOKIE_SWIZZLE;
+/// END SLZ MODIFIED 2026-09-29
 
     // Dim the main light by how much height-fog its rays pass through to reach this fragment.
     // Returns 1 (no change) when no Fog volume override is active.
@@ -289,7 +269,12 @@ Light GetAdditionalLight(uint i, float3 positionWS, half4 shadowMask, bool recei
     light.shadowAttenuation = AdditionalLightShadow(lightIndex, positionWS, light.direction, shadowMask, occlusionProbeChannels, receiveShadows);
 
     real3 cookieColor = SampleAdditionalLightCookie(lightIndex, positionWS);
+/// SLZ MODIFIED 2026-09-29 - expand light to 4 channels, apply blue cookie value to UV as well
+    /*
     light.color *= cookieColor;
+    */
+    light.color *= cookieColor.LIGHT_COOKIE_SWIZZLE;
+/// END SLZ MODIFIED 2026-09-29
 
     return light;
 }
