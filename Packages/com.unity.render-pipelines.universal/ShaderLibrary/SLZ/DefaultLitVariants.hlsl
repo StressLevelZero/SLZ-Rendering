@@ -196,7 +196,7 @@
 #endif
 
 #if R_SCREEN_SPACE_OCCLUSION
-    #pragma dynamic_branch _SCREEN_SPACE_OCCLUSION
+    #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
 #endif
 
 #if R_SCREEN_SPACE_GI

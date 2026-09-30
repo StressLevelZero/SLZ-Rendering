@@ -38,6 +38,7 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
     diffuse.rgb = meshData.vertexLighting;
     half3 specular = 0;
     half4 shadowMask = (half4)0;
+   
     half2 FGD = SampleFgd(_FgdGgx, saturate(meshData.NoV), saturate(physData.PerceptualRoughness()));
 
 //-----------------------------------------------------------------------------
@@ -84,6 +85,11 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
         specular += specularModel.ShFakeSpecular(meshData, physData, shCoeff, diffuse, FGD);
     #endif
 
+    AmbientOcclusionFactor aoFactor = GetScreenSpaceAmbientOcclusion(meshData.screenUV, physData.surfaceType != SurfaceType::Opaque);
+    //return half4(aoFactor.indirectAmbientOcclusion.xxx,1.0);
+    diffuse *= aoFactor.indirectAmbientOcclusion;
+    specular *= aoFactor.indirectAmbientOcclusion;
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 // Sample Main Light
@@ -94,7 +100,7 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
         uint meshRenderingLayers = GetMeshRenderingLayer();
     #endif
 
-    Light mainLight = GetMainLight(meshData.shadowCoord, meshData.positionWS, shadowMask);
+    Light mainLight = GetMainLight(meshData.positionWS, meshData.shadowCoord, shadowMask, aoFactor);
 
     #if defined(_LIGHT_LAYERS)
         if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))
@@ -104,6 +110,9 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
         diffuse += diffuseModel.PunctualDiffuse(meshData, physData, mainLight);
         specular += specularModel.PunctualSpecular(meshData, physData, mainLight, FGD);
     }
+
+  
+
     
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -175,7 +184,10 @@ half4 PhysicallyBasedLighting(MESH_DATA meshData, PHYS_DATA physData, SPECULAR_M
 #if defined(SLZ_FLUORESCENCE)
     output.rgb += Fluorescence(diffuse, physData.GetFluorescentAbsorbance(), physData.GetFluorescentColor()); 
 #endif
-    output += half4(diffuse.rgb * physData.AlbedoAlpha().rgb + specular, 1);
+
+
+    half4 albedoAlpha = physData.AlbedoAlpha();
+    output += half4(diffuse.rgb * albedoAlpha.rgb + specular, albedoAlpha.a);
     output.rgb += physData.emission;
     return output;
 }

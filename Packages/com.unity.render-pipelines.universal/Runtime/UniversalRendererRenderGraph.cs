@@ -2195,7 +2195,11 @@ namespace UnityEngine.Rendering.Universal
         {
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 
+/// SLZ MODIFIED 2026-09-30 - Need MSAA for normals so we can do depth priming
+            /*
             descriptor.msaaSamples = MSAASamples.None; // Never use MSAA for the normal texture!
+            */
+/// END SLZ MODIFIED 2026-09-30
             // Find compatible render-target format for storing normals.
             // Shader code outputs normals in signed format to be compatible with deferred gbuffer layout.
             // Deferred gbuffer format is signed so that normals can be blended for terrain geometry.
