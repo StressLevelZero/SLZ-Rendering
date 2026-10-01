@@ -13,25 +13,13 @@
     COMPILER_MACRO(#, define HLSL_2021)
     COMPILER_MACRO(#, endif)
 
-    #if SLZ_DXC_VERSION_MAJOR > 1 || SLZ_DXC_VERSION_MINOR >= 8
+    #if defined(SLZ_DXC_HAS_TEMPLATES)
         #define TEMPLATES_SUPPORTED
     #endif
 
-    COMPILER_MACRO(#, if __HLSL_VERSION < 2021)
-    
-    #if SLZ_DXC_VERSION_MAJOR != 1 || SLZ_DXC_VERSION_MINOR != 10 || SLZ_DXC_VERSION_PATCH != 0 || SLZ_DXC_VERSION_PATCH != 1
-
-    COMPILER_MACRO(#, error DXCUpdateState.hlsl is invalid! Claims DXC version SLZ_DXC_VERSION_MAJOR . SLZ_DXC_VERSION_MINOR . SLZ_DXC_VERSION_PATCH . SLZ_DXC_VERSION_BUILD but the hlsl version is less than 2021 indicating the original 1.10.0.1 compiler is being used.)
-
-    #endif
-
+    #if !defined(SLZ_DXC_HAS_SELECT)
     #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/HLSL2021SupportTemplates.hlsl"
-
-    //COMPILER_MACRO(#, define (select(a,b,c)) ((a) ? (b) : (c)))
-    //COMPILER_MACRO(#, define and(a, b) ((a) && (b)))
-    //COMPILER_MACRO(#, define or(a, b) ((a) || (b)))
-    COMPILER_MACRO(#, endif)
-
+    #endif
 
 #endif 
 

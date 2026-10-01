@@ -12,6 +12,7 @@ namespace SLZ.DXCUpdater
 {
     public static class SetDXCIncludeState
     {
+        public const int version = 3;
         const string dxcompilerName = "dxcompiler.dll";
         public static readonly string unityDxcPath = Path.Combine(Path.GetDirectoryName(EditorApplication.applicationPath), "Data", "Tools", dxcompilerName);
         public static readonly string slzDxcPath = Path.GetFullPath(Path.Combine("Packages","com.unity.render-pipelines.universal","Editor","DXCUpdate","DXC_Patch","dxc~", dxcompilerName));
@@ -110,16 +111,19 @@ namespace SLZ.DXCUpdater
                 ((minor & 0x1F) << 22) | 
                 ((patch & 0x1F) << 17) |
                 ((build & 0x1FFFF)); 
+            DXCUnitTests.Results supportedFeatures = DXCUnitTests.RunUnitTests();
             string comment = patched ? "" : "//";
             string file =
                 $"#ifndef SLZ_DXC_STATE\n" +
                 $"\t#define SLZ_DXC_STATE\n" +
-                $"\t{comment}#define SLZ_DXC_UPDATED\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION       {versionPacked}\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_MAJOR {major}\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_MINOR {minor}\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_PATCH {patch}\n" +
-                $"\t{comment}#define SLZ_DXC_VERSION_BUILD {build}\n" +
+                $"\t{Allow(patched)}#define SLZ_DXC_UPDATED\n" +
+                $"\t{Allow(patched)}#define SLZ_DXC_VERSION       {versionPacked}\n" +
+                $"\t{Allow(patched)}#define SLZ_DXC_VERSION_MAJOR {major}\n" +
+                $"\t{Allow(patched)}#define SLZ_DXC_VERSION_MINOR {minor}\n" +
+                $"\t{Allow(patched)}#define SLZ_DXC_VERSION_PATCH {patch}\n" +
+                $"\t{Allow(patched)}#define SLZ_DXC_VERSION_BUILD {build}\n" +
+                $"\t{Allow(supportedFeatures.hasTemplates)}#define SLZ_DXC_HAS_TEMPLATES 1\n" +
+                $"\t{Allow(supportedFeatures.hasSelect)   }#define SLZ_DXC_HAS_SELECT    1\n" +
                 $"#endif";
             string original = File.ReadAllText(includePath);
             if (!string.Equals(original, file, System.StringComparison.InvariantCulture))
@@ -130,7 +134,7 @@ namespace SLZ.DXCUpdater
             if (Application.isBatchMode)
             {
                 Debug.Log($"DXC Version: {major}.{minor}.{patch}.{build}");
-                if (major <= 1 && minor < 7)
+                if ((major <= 1 && minor < 7) || !supportedFeatures.hasSelect || !supportedFeatures.hasTemplates)
                 {
                     Debug.LogError("DXC Out of Date!!!! Update DXC on this machine!");
                     return false;
@@ -138,6 +142,11 @@ namespace SLZ.DXCUpdater
             }
 
             return true;
+        }
+
+        static string Allow(bool state)
+        {
+            return state ? "" : "//";
         }
     }
 }

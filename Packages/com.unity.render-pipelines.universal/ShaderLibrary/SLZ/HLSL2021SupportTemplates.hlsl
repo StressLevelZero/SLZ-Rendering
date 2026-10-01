@@ -13,7 +13,9 @@
     #undef HLSL2021_TYPE
 
     #define HLSL2021_TYPE bool
+    #define HLSL2021_BOOL_OPS
     #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SLZ/HLSL2021SupportTemplates.hlsl"
+    #undef HLSL2021_BOOL_OPS
     #undef HLSL2021_TYPE
 
 #elif !defined(HLSL2021_VEC)
@@ -38,6 +40,17 @@
     { 
         return a ? b : c; 
     }
+
+#if defined(HLSL2021_BOOL_OPS)
+    CCAT2(HLSL2021_TYPE, HLSL2021_VEC) and(CCAT2(HLSL2021_TYPE, HLSL2021_VEC) a, CCAT2(HLSL2021_TYPE, HLSL2021_VEC) b) 
+    { 
+        return a && b; 
+    }
+    CCAT2(HLSL2021_TYPE, HLSL2021_VEC) or(CCAT2(HLSL2021_TYPE, HLSL2021_VEC) a, CCAT2(HLSL2021_TYPE, HLSL2021_VEC) b) 
+    { 
+        return a || b; 
+    }
+#endif
 
     #undef CCAT2
 
