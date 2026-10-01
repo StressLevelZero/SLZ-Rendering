@@ -28,5 +28,15 @@ namespace UnityEngine.Rendering.Universal
             get => m_FgdGgxLut;
             set => this.SetValueAndNotify(ref m_FgdGgxLut, value, nameof(m_FgdGgxLut));
         }
+
+        [SerializeField]
+        [ResourcePath("Shaders/SLZ/Rendering/PopulateShadingRateImage.compute")]
+        private ComputeShader m_ShadingRatePopulateShader;
+
+        public ComputeShader shadingRatePopulateShader
+        {
+            get => m_ShadingRatePopulateShader;
+            set => this.SetValueAndNotify(ref m_ShadingRatePopulateShader, value, nameof(m_ShadingRatePopulateShader));
+        }
     }
 }

@@ -35,7 +35,8 @@ namespace UnityEngine.Rendering.Universal.Internal
             if (s_populateShader == null)
             {
                 //s_populateShader = AssetDatabase.LoadAssetAtPath<ComputeShader>(AssetDatabase.GUIDToAssetPath("387556093d452bd429d02eb20a1316ab"));
-                s_populateShader = SLZRendering.Runtime.SLZShadingRateResources.PopulateShader;
+                SlzRpRuntimeResources slzRpResources = GraphicsSettings.GetRenderPipelineSettings<SlzRpRuntimeResources>();
+                s_populateShader = slzRpResources.shadingRatePopulateShader;
             }
 //#endif
 #if URP_COMPATIBILITY_MODE
