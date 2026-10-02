@@ -2,6 +2,7 @@ using System;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering.Universal.Internal;
+using System.Collections.Generic;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -12,6 +13,48 @@ namespace UnityEngine.Rendering.Universal
     /// </summary>
     public partial class DrawSkyboxPass : ScriptableRenderPass
     {
+
+/// SLZ MODIFIED 2026-10-01 - add fullscreen tri rendering path
+        public bool useMotionVectorData;
+        static GlobalKeyword s_DrawProcedural = GlobalKeyword.Create("DRAW_SKY_PROCEDURAL");
+        static readonly int s_WorldSpaceLightPos0 = Shader.PropertyToID("_WorldSpaceLightPosSun");
+        static readonly int s_LightColor0 = Shader.PropertyToID("_LightColorSun");
+
+        struct SkyShaderInfo
+        {
+            public bool isLegacy;
+        }
+
+        [ThreadStatic] static Dictionary<Shader, bool> s_SkyShaderCache;
+
+        static bool isNotLegacySky(Shader shader)
+        {
+            bool returnVal = false;
+            s_SkyShaderCache ??= new Dictionary<Shader, bool>();
+            if (s_SkyShaderCache.TryGetValue(shader, out returnVal ))
+            {
+                return returnVal;
+            }
+            else
+            {
+                LocalKeyword kw = shader.keywordSpace.FindKeyword("DRAW_SKY_PROCEDURAL");
+                returnVal = kw.isValid;
+                s_SkyShaderCache.Add(shader, returnVal);
+                return returnVal;
+            }
+        }
+
+        #if UNITY_EDITOR
+        [OnEnteringPlayMode]
+        [OnExitingPlayMode]
+        static void CleanupSkyCache()
+        {
+            s_SkyShaderCache?.Clear();
+        }
+        #endif
+
+/// END SLZ MODIFIED 2026-10-01 
+
         // Pre-exposes the built-in skybox shaders (see Skybox*.shader in DefaultResourcesExtra).
         private const string k_PreExposeSkyKeyword = "PRE_EXPOSE_SKY";
 
@@ -22,6 +65,7 @@ namespace UnityEngine.Rendering.Universal
         /// <seealso cref="RenderPassEvent"/>
         public DrawSkyboxPass(RenderPassEvent evt)
         {
+            s_SkyShaderCache = new Dictionary<Shader, bool>();
             profilingSampler = URPProfilingSamplers.DrawSkybox;
             renderPassEvent = evt;
         }
@@ -54,8 +98,35 @@ namespace UnityEngine.Rendering.Universal
             return skyRendererListHandle;
         }
 
-        private static void ExecutePass(RasterCommandBuffer cmd, XRPass xr, RendererList rendererList, bool renderExposure)
+        private static void ExecutePass(RasterCommandBuffer cmd, XRPass xr, RendererList rendererList, bool renderExposure, PassData data)
         {
+/// SLZ MODIFIED 2026-10-01 - add fullscreen tri rendering path
+            if (isNotLegacySky(data.material.shader))
+            {
+                CoreUtils.SetKeyword(cmd, k_PreExposeSkyKeyword, renderExposure);
+                Light sun = RenderSettings.sun;
+                Vector4 sunDir;
+                Vector4 lightColor;
+                if (sun && sun.isActiveAndEnabled)
+                {
+                    sunDir = -sun.transform.forward;
+                    lightColor = (Vector4)sun.color * sun.intensity;
+                }
+                else 
+                { 
+                    sunDir = new Vector4(0,0,-1,0);
+                    lightColor = Color.black;
+                }
+                data.material.SetVector(s_WorldSpaceLightPos0, sunDir);
+                data.material.SetVector(s_LightColor0, lightColor);
+                
+                cmd.GetWrappedCommandBufferExt().EnableKeyword(s_DrawProcedural);
+                cmd.DrawProcedural(Matrix4x4.identity, data.material, 0, MeshTopology.Triangles, 3, 1);
+                cmd.GetWrappedCommandBufferExt().DisableKeyword(s_DrawProcedural);
+                CoreUtils.SetKeyword(cmd, k_PreExposeSkyKeyword, false);
+                return;
+            }
+/// END SLZ MODIFIED 2026-10-01
             CoreUtils.SetKeyword(cmd, k_PreExposeSkyKeyword, renderExposure);
 #if ENABLE_VR && ENABLE_XR_MODULE
             if (xr.enabled && xr.singlePassEnabled)
@@ -76,6 +147,8 @@ namespace UnityEngine.Rendering.Universal
             internal RendererListHandle skyRendererListHandle;
             internal Material material;
             internal bool applyExposure; // Off while capturing the environment reflection from the skybox, so the capture stays un-exposed.
+            /// SLZ MODIFIED - allow fullscreen tri sky shaders instead of shitty icosphere with modified camera matrix
+            public bool useFullscreenTri;
         }
 
         private void InitPassData(ref PassData passData, in XRPass xr, in RendererListHandle handle)
@@ -149,7 +222,7 @@ namespace UnityEngine.Rendering.Universal
 
                 builder.SetRenderFunc(static (PassData data, RasterGraphContext context) =>
                 {
-                    ExecutePass(context.cmd, data.xr, data.skyRendererListHandle, data.applyExposure);
+                    ExecutePass(context.cmd, data.xr, data.skyRendererListHandle, data.applyExposure, data);
                 });
             }
         }
